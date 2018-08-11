@@ -45,12 +45,11 @@ class Coroutine : public CoroutineBase {
 	void		*sp=nullptr;	// Stack pointer
 	std::size_t	stack_size=0;	// Stack's size
 
-public:	Coroutine(fun_t,size_t stacksize=0);
-	~Coroutine();
+public:	inline Coroutine(fun_t,size_t stacksize=0);
+	inline ~Coroutine();
 
 	context_t *context() noexcept	{ return fc; }
 };
-
 
 //////////////////////////////////////////////////////////////////////
 // Implementation:

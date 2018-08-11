@@ -10,7 +10,7 @@ LIBS	= $(BOOST)/lib
 .cpp.o:
 	$(CXX) $(CXXFLAGS) $< -o $*.o
 
-all:	check coroutine
+all:	check coroutine server
 
 check:
 	@if [ ! -f $(BOOST)/lib/libboost_context.so.1.53.0 ] ; then \
@@ -21,6 +21,10 @@ coroutine.o: coroutine.hpp
 
 coroutine: coroutine.o
 	$(CXX) coroutine.o -L$(LIBS) -lboost_context -dl -o coroutine -Wl,-rpath=$(LIBS)
+
+server:	epollcoro.o server.o
+	$(CXX) epollcoro.o server.o -L$(LIBS) -lboost_context -dl -o server -Wl,-rpath=$(LIBS)
+
 
 clean:
 	rm -f *.o
