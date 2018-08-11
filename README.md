@@ -72,57 +72,57 @@ Build:
 Test Example:
 -------------
 
-#include "coroutine.hpp"
-
-CoroutineMain mco;
-Coroutine *cr1, *cr2;
-
-static CoroutineBase *
-fun1(CoroutineBase *co) {
-	static int x=0;
-
-	std::cout << "fun1::a x=" << x++ << '\n';
-	co->yield(*cr2);
-
-	std::cout << "fun1::b x=" << x++ << '\n';
-	co->yield(*cr2);
-
-	return co;
-}
-
-static CoroutineBase *
-fun2(CoroutineBase *co) {
-	static int x=0;
-
-	std::cout << "fun2::a x=" << x++ << '\n';
-	co->yield(mco);
-
-	std::cout << "fun2::b x=" << x++ << '\n';
-	co->yield(mco);
-
-	return co;
-}
-
-int
-main(int argc,char **argv) {
-	Coroutine co1(fun1), co2(fun2);
-
-	cr1 = &co1;
-	cr2 = &co2;
-	mco.yield(co1);
-	std::cout << "Back to main a..\n";
-	mco.yield(co1);
-	std::cout << "Back to main b..\n";
-	return 0;
-}
-
+    #include "coroutine.hpp"
+    
+    CoroutineMain mco;
+    Coroutine *cr1, *cr2;
+    
+    static CoroutineBase *
+    fun1(CoroutineBase *co) {
+    	static int x=0;
+    
+    	std::cout << "fun1::a x=" << x++ << '\n';
+    	co->yield(*cr2);
+    
+    	std::cout << "fun1::b x=" << x++ << '\n';
+    	co->yield(*cr2);
+    
+    	return co;
+    }
+    
+    static CoroutineBase *
+    fun2(CoroutineBase *co) {
+    	static int x=0;
+    
+    	std::cout << "fun2::a x=" << x++ << '\n';
+    	co->yield(mco);
+    
+    	std::cout << "fun2::b x=" << x++ << '\n';
+    	co->yield(mco);
+    
+    	return co;
+    }
+    
+    int
+    main(int argc,char **argv) {
+    	Coroutine co1(fun1), co2(fun2);
+    
+    	cr1 = &co1;
+    	cr2 = &co2;
+    	mco.yield(co1);
+    	std::cout << "Back to main a..\n";
+    	mco.yield(co1);
+    	std::cout << "Back to main b..\n";
+    	return 0;
+    }
+    
 Example Output:
 ---------------
-
-fun1::a x=0
-fun2::a x=0
-Back to main a..
-fun1::b x=1
-fun2::b x=1
-Back to main b..
+    
+    fun1::a x=0
+    fun2::a x=0
+    Back to main a..
+    fun1::b x=1
+    fun2::b x=1
+    Back to main b..
 
