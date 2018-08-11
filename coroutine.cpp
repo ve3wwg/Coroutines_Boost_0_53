@@ -20,7 +20,7 @@ Coroutine *cr1, *cr2;
 
 static CoroutineBase *
 fun1(CoroutineBase *co) {
-	static int x=0;
+	int x=10;
 
 	std::cout << "fun1::a x=" << x++ << '\n';
 	co->yield(*cr2);
@@ -33,7 +33,7 @@ fun1(CoroutineBase *co) {
 
 static CoroutineBase *
 fun2(CoroutineBase *co) {
-	static int x=0;
+	int x=20;
 
 	std::cout << "fun2::a x=" << x++ << '\n';
 	co->yield(mco);

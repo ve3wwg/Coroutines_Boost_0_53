@@ -79,7 +79,7 @@ Test Example:
     
     static CoroutineBase *
     fun1(CoroutineBase *co) {
-    	static int x=0;
+    	int x=10;
     
     	std::cout << "fun1::a x=" << x++ << '\n';
     	co->yield(*cr2);
@@ -92,7 +92,7 @@ Test Example:
     
     static CoroutineBase *
     fun2(CoroutineBase *co) {
-    	static int x=0;
+    	int x=20;
     
     	std::cout << "fun2::a x=" << x++ << '\n';
     	co->yield(mco);
@@ -119,10 +119,10 @@ Test Example:
 Example Output:
 ---------------
     
-    fun1::a x=0
-    fun2::a x=0
+    $ ./coroutine 
+    fun1::a x=10
+    fun2::a x=20
     Back to main a..
-    fun1::b x=1
-    fun2::b x=1
+    fun1::b x=11
+    fun2::b x=21
     Back to main b..
-
