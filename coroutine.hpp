@@ -23,8 +23,8 @@ protected:
 	CoroutineBase	*caller=nullptr;
 
 public:	CoroutineBase() {}
-	CoroutineBase* yield(CoroutineBase& coro);
-	CoroutineBase* yield() { return yield(*caller); }
+	inline CoroutineBase* yield(CoroutineBase& coro);
+	inline CoroutineBase* yield() { return yield(*caller); }
 };
 
 //////////////////////////////////////////////////////////////////////
