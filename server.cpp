@@ -15,6 +15,10 @@
 
 EpollCoro *epco_ptr = nullptr;
 
+//////////////////////////////////////////////////////////////////////
+// Uppercase in place:
+//////////////////////////////////////////////////////////////////////
+
 static void
 ucase(char *buf) {
 	char ch;
@@ -38,7 +42,7 @@ sock_func(CoroutineBase *co) {
 	bool keep_alivef = false;				// True when we have Connection: Keep-Alive
 	int sock = sock_co.socket();	
 	std::size_t eoh=0, sob=0;
-	char buf[1024];						// Careful to keep under boost::coroutines::stack_allocator::minimum_stacksize()
+	char buf[4096];						// Careful to keep under boost::coroutines::stack_allocator::minimum_stacksize()
 	int rc;
 
 	//////////////////////////////////////////////////////////////
@@ -68,16 +72,36 @@ sock_func(CoroutineBase *co) {
 	};
 
 	//////////////////////////////////////////////////////////////
+	// Terminate the SockCoro processing. WHen EpollCoro recieves
+	// a nullptr, it knows to destroy this coroutine.
+	//////////////////////////////////////////////////////////////
+
+	auto exit_coroutine = [&]() {
+printf("Closing fd=%d\n",sock);
+		epco_ptr->del(sock);		// Remove our socket from Epoll
+		close(sock);			// Close the socket
+		sock_co.yield_with(nullptr);	// Tell Epoll to drop us
+		assert(0);			// Should never get here..
+	};
+
+	//////////////////////////////////////////////////////////////
 	// Read from the socket until we block:
 	//////////////////////////////////////////////////////////////
 
-	auto read_sock = [sock,&buf,&sock_co]() -> int {
+	auto read_sock = [sock,&buf,&sock_co](size_t max=0) -> int {
 		int rc;	
 
+		if ( max <= 0 )
+			max = sizeof buf;
+		else if ( max > sizeof buf )
+			max = sizeof buf;
+
 		for (;;) {
-			rc = ::read(sock,buf,sizeof buf);
-			if ( rc >= 0 )
+			rc = ::read(sock,buf,max);
+			if ( rc >= 0 ) {
+printf("READ %d bytes from fd=%d\n",rc,sock);
 				return rc;
+			}
 			if ( errno == EWOULDBLOCK )
 				sock_co.yield();	// Yield to EpollCoro
 			else if ( errno != EINTR ) {
@@ -87,18 +111,17 @@ sock_func(CoroutineBase *co) {
 		}
 	};
 
-	printf("Sock func ran.. fd=%d, events %04X\n",sock,sock_co.get_events());
+	//////////////////////////////////////////////////////////////
+	// Read loop for headers:
+	//////////////////////////////////////////////////////////////
 
 	for (;;) {
-		rc = read_sock();
-		rc = ::read(sock,buf,sizeof buf);
+		rc = read_sock();			// Read what we can
 		if ( rc < 0 )
-			break;				// Fatal error
-			
-		printf("READ %d bytes from fd=%d\n",rc,sock);
+			exit_coroutine();		// Hup? Unable to read more
 		if ( rc == 0 )
-			break;				// EOF
-		hbuf.write(buf,rc);
+			exit_coroutine();		// EOF, did not read full header
+		hbuf.write(buf,rc);			// Deposit data into hbuf
 
 		//////////////////////////////////////////////////////
 		// Check if we have read the entire header
@@ -127,16 +150,14 @@ sock_func(CoroutineBase *co) {
 				body.write(flattened.c_str()+sob,sz);
 			}
 			break;		// Read full header
-		}
+		} // else try to read some more..
 	}
 
 	//////////////////////////////////////////////////////////////
-	// Extract HTTP header:
+	// Extract HTTP header info:
 	//////////////////////////////////////////////////////////////
-
 	{
 		hbuf.seekg(0);
-		char buf[4096];
 
 		auto read_line = [&]() -> bool {
 			hbuf.getline(buf,sizeof buf-1);
@@ -170,9 +191,7 @@ sock_func(CoroutineBase *co) {
 				ucase(buf);
 				if ( p ) {
 					++p;
-printf("Header value = '%s'\n",p);
 					p += strspn(p," \t\b");
-printf("Header value now = '%s' (for '%s')\n",p,buf);
 					std::size_t sz = strcspn(p," \t\b");	// Check for trailing whitespace
 					std::string trimmed(p,sz);		// Trimmed value
 
@@ -180,8 +199,6 @@ printf("Header value now = '%s' (for '%s')\n",p,buf);
 				} else	headers.insert(std::pair<std::string,std::string>(buf,"")); 
 			}
 		}
-
-printf("reqtype='%s', path='%s', httpvers='%s'\n",reqtype.c_str(),path.c_str(),httpvers.c_str());
 
 		//////////////////////////////////////////////////////
 		// Determine content-length
@@ -202,13 +219,24 @@ printf("reqtype='%s', path='%s', httpvers='%s'\n",reqtype.c_str(),path.c_str(),h
 
 printf("Content-Length = %zu, ka=%d\n",content_length,keep_alivef);
 
-	printf("Closing fd=%d\n",sock);
-	epco_ptr->del(sock);
-	close(sock);
-printf("Exiting SockCoro for fd=%d\n",sock);
+	//////////////////////////////////////////////////////////////
+	// Read remainder of body, if any:
+	//////////////////////////////////////////////////////////////
 
-	sock_co.yield_with(nullptr);
-	assert(0);
+	while ( body.tellp() < content_length ) {
+		rc = read_sock(content_length);
+		if ( rc > 0 )
+			body.write(buf,rc);
+		else if ( rc <= 0 )
+			break;
+	}
+
+	if ( body.tellp() != content_length ) {
+printf("Did not read body! fd=%d, body %zd, content-length %zd\n",sock,size_t(body.tellp()),content_length);
+		exit_coroutine();		// Protocol error
+	}
+
+	exit_coroutine();			// For now..
 	return nullptr;
 }
 
