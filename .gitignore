@@ -1,3 +1,4 @@
 *.o
+.errs.t
 coroutine
 server
