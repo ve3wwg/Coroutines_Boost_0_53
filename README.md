@@ -10,7 +10,7 @@ CoroutineMain:
 
 Coroutine:
 ----------
-    is used for a new context, requiring a thread
+    is used for a new context, requiring a stack
     to be allocated.
 
     Coroutine co1(myfunc[,stack_size]);
