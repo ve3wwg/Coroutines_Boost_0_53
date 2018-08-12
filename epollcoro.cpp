@@ -231,5 +231,11 @@ EpollCoro::import_ipv6(const char *ipv6,s_address& addr) {
         return true;
 } 
 
+void
+SockCoro::set_events(uint32_t ev) noexcept {
+	events = ev;
+
+	flags |= (ev & (EPOLLHUP|EPOLLRDHUP|EPOLLERR));
+}
 
 // End epollcoro.cpp

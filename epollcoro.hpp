@@ -36,13 +36,15 @@ union s_address {
 };
 
 class SockCoro : public Coroutine {
-	int		sock;		// Socket
-	uint32_t	events=0;	// Epoll events
+	int		sock;			// Socket
+	uint32_t	events=0;		// Epoll events
+	uint32_t	flags=0;		// Epoll flags like EPOLLHUP/RDHUP/ERR
 
 public:	SockCoro(fun_t func,int fd) : Coroutine(func), sock(fd) {}
 	int socket() noexcept 			{ return sock; }
-	void set_events(uint32_t ev) noexcept 	{ events=ev; }
+	void set_events(uint32_t ev) noexcept;
 	uint32_t get_events() noexcept 		{ return events; }
+	uint32_t get_flags() noexcept		{ return flags; }
 };
 
 class EpollCoro {
