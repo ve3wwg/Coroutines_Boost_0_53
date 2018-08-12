@@ -113,19 +113,22 @@ void
 EpollCoro::run() {
 	static const int max_events = 8*1024;
 	epoll_event events[max_events];
-	int rc;
+	int rc, n_events;
 
 	for (;;) {
 		rc = epoll_wait(efd,&events[0],max_events,10);
-		assert(rc >= 0);
 		if ( rc > 0 ) {
-			for ( int x=0; x<rc; ++x ) {
+			n_events = rc;
+			for ( int x=0; x<n_events; ++x ) {
 				SockCoro& co = *(SockCoro*)events[x].data.ptr;
 
 				co.set_events(events[x].events);
 				if ( !epco.yield(co) )
 					delete &co;	// Coroutine is done
 			}
+		} else if ( rc < 0 ) {
+			printf("EpollCoro: %s: epoll_wait()\n",
+				strerror(errno));
 		}
 	}
 }
