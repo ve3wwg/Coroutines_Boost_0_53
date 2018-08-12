@@ -25,6 +25,8 @@ protected:
 public:	CoroutineBase() {}
 	inline CoroutineBase* yield(CoroutineBase& coro);
 	inline CoroutineBase* yield() { return yield(*caller); }
+	inline CoroutineBase* yield_with(CoroutineBase& coro,void *vptr);
+	inline CoroutineBase* yield_with(void *vptr) { return yield_with(*caller,vptr); }
 };
 
 //////////////////////////////////////////////////////////////////////
@@ -79,9 +81,15 @@ Coroutine::~Coroutine() {
 //////////////////////////////////////////////////////////////////////
 
 CoroutineBase *
-CoroutineBase::yield(CoroutineBase &to) {
+CoroutineBase::yield(CoroutineBase& to) {
 	to.caller = this;		// Save ref to calling object
 	return (Coroutine*) boost::context::jump_fcontext(fc,to.fc,(intptr_t)&to);
+}
+
+CoroutineBase *
+CoroutineBase::yield_with(CoroutineBase& to,void *vptr) {
+	to.caller = this;		// Save ref to calling objectt
+	return (Coroutine*) boost::context::jump_fcontext(fc,to.fc,(intptr_t)vptr);
 }
 
 #endif // COROUTINE_HPP
