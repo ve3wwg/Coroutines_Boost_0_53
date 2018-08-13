@@ -82,7 +82,7 @@ sock_func(CoroutineBase *co) {
 	//////////////////////////////////////////////////////////////
 
 	auto exit_coroutine = [&]() {
-printf("Closing fd=%d\n",sock);
+		printf("Exit coroutine sock=%d\n",sock);
 		epco_ptr->del(sock);		// Remove our socket from Epoll
 		close(sock);			// Close the socket
 		sock_co.yield_with(nullptr);	// Tell Epoll to drop us
@@ -103,10 +103,8 @@ printf("Closing fd=%d\n",sock);
 
 		for (;;) {
 			rc = ::read(sock,buf,max);
-			if ( rc >= 0 ) {
-printf("READ %d bytes from fd=%d\n",rc,sock);
+			if ( rc >= 0 )
 				return rc;
-			}
 			if ( errno == EWOULDBLOCK )
 				sock_co.yield();	// Yield to EpollCoro
 			else if ( errno != EINTR ) {
@@ -124,8 +122,6 @@ printf("READ %d bytes from fd=%d\n",rc,sock);
 
 		while ( spos < sz ) {
 			rc = ::write(sock,p+spos,sz);
-if ( rc >= 0 ) errno = 0;
-printf("wrote(%d,,sz=%zd) => %d (errno=%d %s)\n",sock,sz,rc,errno,strerror(errno));
 			if ( rc < 0 ) {
 				if ( errno == EWOULDBLOCK )
 					sock_co.yield(); // Yield to EpollCoro
@@ -139,7 +135,6 @@ printf("wrote(%d,,sz=%zd) => %d (errno=%d %s)\n",sock,sz,rc,errno,strerror(errno
 				sz -= rc;
 			}
 		}
-printf("write_sock() returned.\n");
 	};
 
 	//////////////////////////////////////////////////////////////
@@ -164,7 +159,7 @@ printf("write_sock() returned.\n");
 		keep_alivef = false;
 		eoh = sob = 0;
 
-printf("Reading request..\n");
+		printf("Expecting request from sock=%d\n",sock);
 
 		//////////////////////////////////////////////////////
 		// Read loop for headers:
@@ -239,7 +234,6 @@ printf("Reading request..\n");
 				httpvers.assign(p,strcspn(p," \t\b"));
 
 				while ( read_line() ) {
-					printf("HDR: %s\n",buf);
 					char *p = strchr(buf,':');
 					if ( p )
 						*p = 0;
@@ -272,8 +266,6 @@ printf("Reading request..\n");
 			}
 		}
 
-printf("Content-Length = %zu, ka=%d\n",content_length,keep_alivef);
-
 		//////////////////////////////////////////////////////
 		// Read remainder of body, if any:
 		//////////////////////////////////////////////////////
@@ -286,10 +278,8 @@ printf("Content-Length = %zu, ka=%d\n",content_length,keep_alivef);
 				break;
 		}
 
-		if ( body.tellp() != content_length ) {
-printf("Did not read body! fd=%d, body %zd, content-length %zd\n",sock,size_t(body.tellp()),content_length);
+		if ( body.tellp() != content_length )
 			exit_coroutine();		// Protocol error
-		}
 
 		//////////////////////////////////////////////////////
 		// Form Reponse:
@@ -319,6 +309,7 @@ printf("Did not read body! fd=%d, body %zd, content-length %zd\n",sock,size_t(bo
 		if ( evt.update() )
 			epco_ptr->chg(sock,evt.state(),co);
 
+		printf("Writing response..\n");
 		write_sock(rhdr);
 		write_sock(rbody);
 
@@ -327,8 +318,12 @@ printf("Did not read body! fd=%d, body %zd, content-length %zd\n",sock,size_t(bo
 		if ( evt.update() )
 			epco_ptr->chg(sock,evt.state(),co);
 
-		if ( !keep_alivef )
+		if ( !keep_alivef ) {
+			printf("Not keep-alive..\n");
 			break;
+		}
+		if ( sock_co.get_flags() & (EPOLLHUP|EPOLLRDHUP|EPOLLERR) )
+			break;			// No more requests possible
 	}
 
 	exit_coroutine();			// For now..
@@ -352,7 +347,6 @@ listen_func(CoroutineBase *co) {
 		if ( fd < 0 ) {
 			listen_co.yield();	// Yield to Epoll
 		} else	{
-			printf("ACCEPTED SOCKET fd=%d\n",fd);
 			epco_ptr->add(fd,EPOLLIN|EPOLLHUP|EPOLLRDHUP|EPOLLERR,
 				new SockCoro(sock_func,fd));
 		}
@@ -387,11 +381,7 @@ main(int argc,char **argv) {
 			add_listen_port(argv[x]);
 	}
 
-	printf("Min stack size: %zu\n",boost::coroutines::stack_allocator::minimum_stacksize());
-
 	epco.run();
-	printf("EpollCoro returned.\n");
-
 	return 0;
 }
 
