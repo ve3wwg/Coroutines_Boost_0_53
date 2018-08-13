@@ -27,6 +27,12 @@ public:	Events(uint32_t ev=0) : evstate(ev) {}
 	void disable(uint32_t ev) noexcept	{ evchgs = ( (evstate ^ evchgs) & ~ev ) ^ evstate; }
 	uint32_t changes() noexcept		{ return evchgs; }
 	uint32_t state() noexcept		{ return evstate; }
+	bool update() noexcept {
+		if ( !evchgs )
+			return false;
+		evstate ^= evchgs;		// Apply changes
+		return true;
+	};
 };
 
 union s_address {
