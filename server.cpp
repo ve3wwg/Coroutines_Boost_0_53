@@ -289,7 +289,9 @@ sock_func(CoroutineBase *co) {
 			rhdr << "Connection: Keep-Alive" << html_endl;
 		else	rhdr << "Connection: Close" << html_endl;
 
-		rbody	<< "Response body.." << html_endl
+		rbody	<< "Request type: " << reqtype << html_endl
+			<< "Request path: " << path << html_endl
+			<< "Http Version: " << httpvers << html_endl
 			<< "Request Headers were:" << html_endl;
 
 		for ( auto& pair : headers ) {
