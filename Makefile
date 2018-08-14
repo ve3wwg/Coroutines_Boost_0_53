@@ -10,11 +10,16 @@ LIBS	= $(BOOST)/lib
 .cpp.o:
 	$(CXX) $(CXXFLAGS) $< -o $*.o
 
-all:	check coroutine server
+all:	boost_check coroutine server
 
-check:
+boost_check:
+	@if [ ! -d $(BOOST)/. ] ; then \
+		echo "export or supply BOOST=<boost_1.53.0_dir>" ; \
+		exit 1; \
+	fi
 	@if [ ! -f $(BOOST)/lib/libboost_context.so.1.53.0 ] ; then \
 		echo "Boost library libboost_context.so.1.53.0 (version 1.53.0) required." ; \
+		exit 1; \
 	fi
 
 coroutine.o: coroutine.hpp
