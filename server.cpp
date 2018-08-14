@@ -15,9 +15,6 @@
 
 static const char html_endl[] = "\r\n";
 
-EpollCoro *epco_ptr = nullptr;
-
-
 //////////////////////////////////////////////////////////////////////
 // Uppercase in place:
 //////////////////////////////////////////////////////////////////////
@@ -37,7 +34,8 @@ ucase(char *buf) {
 
 static CoroutineBase *
 sock_func(CoroutineBase *co) {
-	SockCoro& sock_co = *(SockCoro*)co;
+	SockCoro& sock_co = *dynamic_cast<SockCoro*>(co);
+	EpollCoro& epco = *dynamic_cast<EpollCoro*>(sock_co.get_caller());
 	const int sock = sock_co.socket();	
 	Events evt(EPOLLIN|EPOLLHUP|EPOLLRDHUP|EPOLLERR);
 	std::string reqtype, path, httpvers;
@@ -83,7 +81,7 @@ sock_func(CoroutineBase *co) {
 
 	auto exit_coroutine = [&]() {
 		printf("Exit coroutine sock=%d\n",sock);
-		epco_ptr->del(sock);		// Remove our socket from Epoll
+		epco.del(sock);			// Remove our socket from Epoll
 		close(sock);			// Close the socket
 		sock_co.yield_with(nullptr);	// Tell Epoll to drop us
 		assert(0);			// Should never get here..
@@ -307,7 +305,7 @@ sock_func(CoroutineBase *co) {
 		evt.disable(EPOLLIN);
 		evt.enable(EPOLLOUT);
 		if ( evt.update() )
-			epco_ptr->chg(sock,evt.state(),co);
+			epco.chg(sock,evt.state(),co);
 
 		printf("Writing response..\n");
 		write_sock(rhdr);
@@ -316,7 +314,7 @@ sock_func(CoroutineBase *co) {
 		evt.disable(EPOLLOUT);
 		evt.enable(EPOLLIN);
 		if ( evt.update() )
-			epco_ptr->chg(sock,evt.state(),co);
+			epco.chg(sock,evt.state(),co);
 
 		if ( !keep_alivef ) {
 			printf("Not keep-alive..\n");
@@ -337,6 +335,7 @@ sock_func(CoroutineBase *co) {
 static CoroutineBase *
 listen_func(CoroutineBase *co) {
 	SockCoro& listen_co = *(SockCoro*)co;
+	EpollCoro& epco = *dynamic_cast<EpollCoro*>(listen_co.get_caller());
 	s_address addr;
 	socklen_t addrlen = sizeof addr;
 	int lsock = listen_co.socket();
@@ -347,7 +346,7 @@ listen_func(CoroutineBase *co) {
 		if ( fd < 0 ) {
 			listen_co.yield();	// Yield to Epoll
 		} else	{
-			epco_ptr->add(fd,EPOLLIN|EPOLLHUP|EPOLLRDHUP|EPOLLERR,
+			epco.add(fd,EPOLLIN|EPOLLHUP|EPOLLRDHUP|EPOLLERR,
 				new SockCoro(sock_func,fd));
 		}
 	}
@@ -359,8 +358,6 @@ int
 main(int argc,char **argv) {
 	EpollCoro epco;
 	int port = 2345, backlog = 50;
-
-	epco_ptr = &epco;
 
 	auto add_listen_port = [&](const char *straddr) {
 		s_address addr;
