@@ -123,7 +123,7 @@ EpollCoro::run() {
 				SockCoro& co = *(SockCoro*)events[x].data.ptr;
 
 				co.set_events(events[x].events);
-				if ( !epco.yield(co) )
+				if ( !yield(co) )
 					delete &co;	// Coroutine is done
 			}
 		} else if ( rc < 0 ) {
