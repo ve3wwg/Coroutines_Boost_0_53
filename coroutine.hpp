@@ -23,10 +23,12 @@ protected:
 	CoroutineBase	*caller=nullptr;
 
 public:	CoroutineBase() {}
-	inline CoroutineBase* yield(CoroutineBase& coro);
-	inline CoroutineBase* yield() { return yield(*caller); }
-	inline CoroutineBase* yield_with(CoroutineBase& coro,void *vptr);
-	inline CoroutineBase* yield_with(void *vptr) { return yield_with(*caller,vptr); }
+	virtual ~CoroutineBase() {};
+	inline virtual CoroutineBase* yield(CoroutineBase& coro);
+	inline virtual CoroutineBase* yield() { return yield(*caller); }
+	inline virtual CoroutineBase* yield_with(CoroutineBase& coro,void *vptr);
+	inline virtual CoroutineBase* yield_with(void *vptr) { return yield_with(*caller,vptr); }
+	inline virtual CoroutineBase* get_caller() noexcept { return caller; }
 };
 
 //////////////////////////////////////////////////////////////////////
