@@ -2,7 +2,7 @@ BOOST	?= /usr/local
 CXX	= g++
 STD	= -std=c++11
 
-CXXFLAGS= -Wall $(STD) -I$(INCL) -c -Wno-unused-local-typedefs -Wno-memset-transposed-args
+CXXFLAGS= -Wall $(STD) -I$(INCL) -g -c -Wno-unused-local-typedefs -Wno-memset-transposed-args
 
 INCL	= $(BOOST)/include
 LIBS	= $(BOOST)/lib
@@ -30,4 +30,4 @@ clean:
 	rm -f *.o
 
 clobber: clean
-	rm -f coroutine .errs.t
+	rm -f coroutine .errs.t core
