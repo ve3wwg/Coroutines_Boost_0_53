@@ -126,3 +126,29 @@ Example Output:
     fun1::b x=11
     fun2::b x=21
     Back to main b..
+
+Server Example:
+---------------
+
+    $ ./server 
+
+    Will cause it to listen to 127.0.0.1:2345
+
+Client Test:
+------------
+
+    $ wget http://127.0.0.1:2345/whatever/params?pig=oink --save-headers -qO-
+    HTTP/1.1 200 OK 
+    Connection: Keep-Alive
+    Content-Length: 209
+
+    Request type: GET
+    Request path: /whatever/params?pig=oink
+    Http Version: HTTP/1.1
+    Request Headers were:
+    Hdr: HOST: 127.0.0.1:2345
+    Hdr: CONNECTION: Keep-Alive
+    Hdr: ACCEPT: */*
+    Hdr: USER-AGENT: Wget/1.16
+    $ 
+
