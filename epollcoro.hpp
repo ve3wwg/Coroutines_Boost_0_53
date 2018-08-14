@@ -18,15 +18,18 @@
 #include <unordered_map>
 
 class Events {
-	uint32_t	evstate;
+	uint32_t	evstate=0;
 	uint32_t	evchgs=0;
 
 public:	Events(uint32_t ev=0) : evstate(ev) {}
+
 	void set(uint32_t ev) noexcept		{ evchgs = evstate ^ ev;  }
 	void enable(uint32_t ev) noexcept	{ evchgs = ( (evstate ^ evchgs) | ev ) ^ evstate; }
 	void disable(uint32_t ev) noexcept	{ evchgs = ( (evstate ^ evchgs) & ~ev ) ^ evstate; }
+
 	uint32_t changes() noexcept		{ return evchgs; }
 	uint32_t state() noexcept		{ return evstate; }
+
 	bool update() noexcept {
 		if ( !evchgs )
 			return false;
@@ -53,21 +56,20 @@ public:	SockCoro(fun_t func,int fd) : Coroutine(func), sock(fd) {}
 	uint32_t get_flags() noexcept		{ return flags; }
 };
 
-class EpollCoro {
-	CoroutineMain	epco;		// Main coroutine context
-	int		efd = -1;	// From epoll_create1()
+class EpollCoro : public CoroutineMain {
+	int		efd = -1;		// From epoll_create1()
 
 	std::unordered_map<int/*fd*/,CoroutineBase*> fdset;
 
 public:	EpollCoro();
-	~EpollCoro();
-	void close(int fd);
-	void run();
+	virtual ~EpollCoro();
+	virtual void close(int fd);
+	virtual void run();
 
-	bool add(int fd,uint32_t events,SockCoro *co);
-	bool del(int fd);
-	bool chg(int fd,uint32_t events,CoroutineBase *co=nullptr);
-	bool chg(int fd,Events& ev,CoroutineBase *co=nullptr);
+	virtual bool add(int fd,uint32_t events,SockCoro *co);
+	virtual bool del(int fd);
+	virtual bool chg(int fd,uint32_t events,CoroutineBase *co=nullptr);
+	virtual bool chg(int fd,Events& ev,CoroutineBase *co=nullptr);
 
 	static bool import_ip(const char *straddr,s_address& addr);
 	static bool import_ipv4(const char *ipv4,s_address& addr);
