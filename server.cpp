@@ -88,10 +88,23 @@ sock_func(CoroutineBase *co) {
 	};
 
 	//////////////////////////////////////////////////////////////
+	// When yielding to Epoll, update the event flags. After
+	// resuming from Epoll, disable the flags like EPOLLRDHUP
+	// that we now know about.
+	//////////////////////////////////////////////////////////////
+
+	auto epoll_yield = [&]() {
+		if ( evt.update() )		// Event changes?
+			epco.chg(sock,evt.state()); // Yes, update Epoll events
+		sock_co.yield();		// Yield to Epoll
+		evt.disable(sock_co.get_flags()); // Disable flags we received
+	};
+
+	//////////////////////////////////////////////////////////////
 	// Read from the socket until we block:
 	//////////////////////////////////////////////////////////////
 
-	auto read_sock = [sock,&buf,&sock_co](size_t max=0) -> int {
+	auto read_sock = [&](size_t max=0) -> int {
 		int rc;	
 
 		if ( max <= 0 )
@@ -103,9 +116,9 @@ sock_func(CoroutineBase *co) {
 			rc = ::read(sock,buf,max);
 			if ( rc >= 0 )
 				return rc;
-			if ( errno == EWOULDBLOCK )
-				sock_co.yield();	// Yield to EpollCoro
-			else if ( errno != EINTR ) {
+			if ( errno == EWOULDBLOCK ) {
+				epoll_yield();
+			} else if ( errno != EINTR ) {
 				printf("ERROR, %s: read(fd=%d\n",strerror(errno),sock);
 				return rc;
 			}
@@ -122,7 +135,7 @@ sock_func(CoroutineBase *co) {
 			rc = ::write(sock,p+spos,sz);
 			if ( rc < 0 ) {
 				if ( errno == EWOULDBLOCK )
-					sock_co.yield(); // Yield to EpollCoro
+					epoll_yield();
 				else if ( errno == EINTR )
 					continue;
 				else	{
