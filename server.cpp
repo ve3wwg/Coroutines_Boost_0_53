@@ -281,7 +281,7 @@ sock_func(CoroutineBase *co) {
 		// Read remainder of body, if any:
 		//////////////////////////////////////////////////////
 
-		while ( body.tellp() < content_length ) {
+		while ( long(body.tellp()) < long(content_length) ) {
 			rc = read_sock(content_length);
 			if ( rc > 0 )
 				body.write(buf,rc);
@@ -289,7 +289,7 @@ sock_func(CoroutineBase *co) {
 				break;
 		}
 
-		if ( body.tellp() != content_length )
+		if ( long(body.tellp()) != long(content_length) )
 			exit_coroutine();		// Protocol error
 
 		//////////////////////////////////////////////////////
