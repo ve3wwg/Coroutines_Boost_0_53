@@ -33,6 +33,7 @@ public:	Service(fun_t func,int fd) : Coroutine(func), sock(fd) {}
 	Events &events() noexcept		{ return ev; }
 	uint32_t err_flags() noexcept		{ return er_flags; }
 	uint32_t evt_flags() noexcept		{ return ev_flags; }
+	void terminate() noexcept		{ yield_with(nullptr); }
 };
 
 

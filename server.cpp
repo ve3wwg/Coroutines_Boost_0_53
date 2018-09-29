@@ -84,7 +84,7 @@ sock_func(CoroutineBase *co) {
 		printf("Exit coroutine sock=%d\n",sock);
 		scheduler.del(sock);			// Remove our socket from Epoll
 		close(sock);				// Close the socket
-		svc.yield_with(nullptr);		// Tell Epoll to drop us
+		svc.terminate();			// Delete this coroutine
 		assert(0);				// Should never get here..
 	};
 
