@@ -1,4 +1,5 @@
-BOOST	?= /usr/local
+#BOOST	?= /usr/local
+BOOST	?= $(HOME)/local
 CXX	= g++
 STD	= -std=c++11
 
@@ -30,9 +31,11 @@ coroutine: coroutine.o
 server:	epollcoro.o server.o
 	$(CXX) epollcoro.o server.o -L$(LIBS) -lboost_context -dl -o server -Wl,-rpath=$(LIBS)
 
-
 clean:
 	rm -f *.o
 
 clobber: clean
 	rm -f coroutine .errs.t core
+
+test:
+	wget 'http://127.0.0.1:2345/some/path?var=1&var=2' --save-headers -qO - </dev/null 2>&1
