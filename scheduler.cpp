@@ -150,4 +150,25 @@ Service::write_sock(int fd,const void *buf,size_t bytes) noexcept {
 	return -errno;					// Should never get here
 }
 
+//////////////////////////////////////////////////////////////////////
+// Read until http buffer complete in buf:
+//
+// RETURNS:
+//	< 0	Fatal error
+//	0	EOF encountered before header was fully read
+//	1	Received http header into buf
+//////////////////////////////////////////////////////////////////////
+
+int
+Service::read_header(int fd,HttpBuf& buf) noexcept {
+
+	auto readcb = [](int fd,void *buf,size_t bytes,void *arg) {
+		Service& svc = *(Service*)arg;
+
+		return svc.read_sock(fd,buf,bytes);
+	};
+
+	return buf.read_header(sock,readcb,this);
+}
+
 // End scheduler.cpp

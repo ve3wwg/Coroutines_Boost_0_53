@@ -12,6 +12,7 @@
 #include <assert.h>
 
 #include "httpbuf.hpp"
+#include "utils.hpp"
 
 //////////////////////////////////////////////////////////////////////
 // Test if the std::stringstream has the http end header sequence
@@ -135,6 +136,75 @@ HttpBuf::reset() noexcept {
 	hdr_elen = 0;
 	hdr_epos = 0;
 	IOBuf::reset();
+}
+
+//////////////////////////////////////////////////////////////////////
+// Parse received header data into header lines:
+//////////////////////////////////////////////////////////////////////
+
+size_t
+HttpBuf::parse_headers(
+  std::string& reqtype,			// Out: GET/POST
+  std::string& path,			// Out: Path component
+  std::string& httpvers,		// Out: HTTP/x.x
+  std::unordered_multimap<std::string,std::string>& headers, // Out: Parsed headers
+  size_t maxhdr				// In:  Max size of headers buffer for parsing
+) noexcept {
+	char *buf = new char[maxhdr];
+
+	seekg(0);
+
+	auto read_line = [&]() -> bool {
+		getline(buf,maxhdr-1);
+		buf[maxhdr-1] = 0;
+
+		size_t sz = strcspn(buf,"\r\n");
+		buf[sz] = 0;
+		if ( !*buf )
+			return false;
+		return !this->fail();
+	};
+
+	if ( read_line() ) {
+		unsigned ux = strcspn(buf," \t\b");
+		char *p;
+
+		reqtype.assign(buf,ux);
+		p = buf + ux;
+		p += strspn(p," \t\b");
+		ux = strcspn(p," \t\b");
+		path.assign(p,ux);
+		p += ux;
+		p += strspn(p," \t\b");
+		httpvers.assign(p,strcspn(p," \t\b"));
+
+		while ( read_line() ) {
+			char *p = strchr(buf,':');
+			if ( p )
+				*p = 0;
+			ucase_buffer(buf);
+			if ( p ) {
+				++p;
+				p += strspn(p," \t\b");
+				std::size_t sz = strcspn(p," \t\b");	// Check for trailing whitespace
+				std::string trimmed(p,sz);		// Trimmed value
+
+				headers.insert(std::pair<std::string,std::string>(buf,trimmed));
+			} else	headers.insert(std::pair<std::string,std::string>(buf,"")); 
+		}
+	}
+
+	delete[] buf;
+	buf = 0;
+
+	seekg(hdr_epos+hdr_elen);	// Seek to start of body
+
+	auto it = headers.find("CONTENT-LENGTH");
+	if ( it == headers.end() )
+		return 0;		// No body
+
+	const std::string& clen = it->second;
+	return strtoul(clen.c_str(),nullptr,10); // Body length
 }
 
 // End httpbuf.cpp

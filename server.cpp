@@ -17,19 +17,6 @@
 static const char html_endl[] = "\r\n";
 
 //////////////////////////////////////////////////////////////////////
-// Uppercase in place:
-//////////////////////////////////////////////////////////////////////
-
-static void
-ucase(char *buf) {
-	char ch;
-
-	for ( ; (ch = *buf) != 0; ++buf ) 
-		if ( ch >= 'a' && ch <= 'z' )
-			*buf &= ~0x20;
-}
-
-//////////////////////////////////////////////////////////////////////
 // HTTP Request Processor
 //////////////////////////////////////////////////////////////////////
 
@@ -62,6 +49,7 @@ sock_func(CoroutineBase *co) {
 		return true;
 	};
 
+#if 0
 	//////////////////////////////////////////////////////////////
 	// Lookup a header, return std::size_t value
 	//////////////////////////////////////////////////////////////
@@ -75,6 +63,7 @@ sock_func(CoroutineBase *co) {
 		}
 		return false;
 	};
+#endif
 
 	//////////////////////////////////////////////////////////////
 	// Terminate the Service processing. WHen Scheduler recieves
@@ -152,80 +141,22 @@ sock_func(CoroutineBase *co) {
 		printf("Expecting request from sock=%d\n",sock);
 
 		//////////////////////////////////////////////////////
-		// Read loop for headers:
+		// Read http headers:
 		//////////////////////////////////////////////////////
 
-		auto readcb = [](int fd,void *buf,size_t bytes,void *arg) {
-			Service& svc = *(Service*)arg;
-
-			return svc.read_sock(fd,buf,bytes);
-		};
-
-		rc = hbuf.read_header(sock,readcb,&svc);
-		if ( rc != 1 )
+		if ( svc.read_header(sock,hbuf) != 1 )
 			exit_coroutine();		// Fail!
 
+		content_length = hbuf.parse_headers(reqtype,path,httpvers,headers,4096);
+
 		//////////////////////////////////////////////////////
-		// Extract HTTP header info:
+		// Check if we have Connection: Keep-Alive
 		//////////////////////////////////////////////////////
 		{
-			hbuf.seekg(0);
+			std::string keep_alive;
 
-			auto read_line = [&]() -> bool {
-				hbuf.getline(buf,sizeof buf-1);
-				buf[sizeof buf-1] = 0;
-	
-				size_t sz = strcspn(buf,"\r\n");
-				buf[sz] = 0;
-				if ( !*buf )
-					return false;
-				return !hbuf.fail();
-			};
-
-			if ( read_line() ) {
-				unsigned ux = strcspn(buf," \t\b");
-				char *p;
-
-				reqtype.assign(buf,ux);
-				p = buf + ux;
-				p += strspn(p," \t\b");
-				ux = strcspn(p," \t\b");
-				path.assign(p,ux);
-				p += ux;
-				p += strspn(p," \t\b");
-				httpvers.assign(p,strcspn(p," \t\b"));
-
-				while ( read_line() ) {
-					char *p = strchr(buf,':');
-					if ( p )
-						*p = 0;
-					ucase(buf);
-					if ( p ) {
-						++p;
-						p += strspn(p," \t\b");
-						std::size_t sz = strcspn(p," \t\b");	// Check for trailing whitespace
-						std::string trimmed(p,sz);		// Trimmed value
-
-						headers.insert(std::pair<std::string,std::string>(buf,trimmed));
-					} else	headers.insert(std::pair<std::string,std::string>(buf,"")); 
-				}
-			}
-
-			//////////////////////////////////////////////
-			// Determine content-length
-			//////////////////////////////////////////////
-		
-			get_header_sz("CONTENT-LENGTH",content_length);
-
-			//////////////////////////////////////////////
-			// Check if we have Connection: Keep-Alive
-			//////////////////////////////////////////////
-			{
-				std::string keep_alive;
-
-				if ( get_header_str("CONNECTION",keep_alive) )
-					keep_alivef = !strcasecmp(keep_alive.c_str(),"Keep-Alive");
-			}
+			if ( get_header_str("CONNECTION",keep_alive) )
+				keep_alivef = !strcasecmp(keep_alive.c_str(),"Keep-Alive");
 		}
 
 		//////////////////////////////////////////////////////

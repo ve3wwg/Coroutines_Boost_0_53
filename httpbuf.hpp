@@ -6,6 +6,9 @@
 #ifndef HTTPBUF_HPP
 #define HTTPBUF_HPP
 
+#include <string>
+#include <unordered_map>
+
 #include "iobuf.hpp"
 
 class HttpBuf : public IOBuf {
@@ -23,6 +26,13 @@ public:	HttpBuf() {};
 	void reset() noexcept;
 	bool have_end(size_t *pepos,size_t *pelen) noexcept;
 	int read_header(int fd,readcb_t,void *arg) noexcept;
+	size_t parse_headers(
+	  std::string& reqtype,			// Out: GET/POST
+	  std::string& path,			// Out: Path component
+	  std::string& httpvers,		// Out: HTTP/x.x
+	  std::unordered_multimap<std::string,std::string>& headers, // Out: Parsed headers
+	  size_t maxhdr=2048			// In:  Max size of headers buffer for parsing
+	) noexcept;
 };
 
 #endif // HTTPBUF_HPP

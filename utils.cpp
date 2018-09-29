@@ -1,0 +1,29 @@
+//////////////////////////////////////////////////////////////////////
+// utils.cpp -- General utility functions
+// Date: Sat Sep 29 12:22:52 2018   (C) ve3wwg@gmail.com
+///////////////////////////////////////////////////////////////////////
+
+#include <stdio.h>
+#include <stdarg.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <errno.h>
+#include <string.h>
+#include <assert.h>
+
+#include "utils.hpp"
+
+//////////////////////////////////////////////////////////////////////
+// Uppercase in place:
+//////////////////////////////////////////////////////////////////////
+
+void
+ucase_buffer(char *buf) {
+	char ch;
+
+	for ( ; (ch = *buf) != 0; ++buf ) 
+		if ( ch >= 'a' && ch <= 'z' )
+			*buf &= ~0x20;
+}
+
+// End utils.cpp
