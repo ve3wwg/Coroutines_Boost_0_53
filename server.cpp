@@ -34,7 +34,7 @@ ucase(char *buf) {
 
 static CoroutineBase *
 sock_func(CoroutineBase *co) {
-	SockCoro& sock_co = *dynamic_cast<SockCoro*>(co);
+	Service& sock_co = *dynamic_cast<Service*>(co);
 	Scheduler& epco = *dynamic_cast<Scheduler*>(sock_co.get_caller());
 	const int sock = sock_co.socket();	
 	std::string reqtype, path, httpvers;
@@ -74,7 +74,7 @@ sock_func(CoroutineBase *co) {
 	};
 
 	//////////////////////////////////////////////////////////////
-	// Terminate the SockCoro processing. WHen Scheduler recieves
+	// Terminate the Service processing. WHen Scheduler recieves
 	// a nullptr, it knows to destroy this coroutine.
 	//////////////////////////////////////////////////////////////
 
@@ -333,7 +333,7 @@ sock_func(CoroutineBase *co) {
 
 static CoroutineBase *
 listen_func(CoroutineBase *co) {
-	SockCoro& listen_co = *(SockCoro*)co;
+	Service& listen_co = *(Service*)co;
 	Scheduler& epco = *dynamic_cast<Scheduler*>(listen_co.get_caller());
 	u_address addr;
 	socklen_t addrlen = sizeof addr;
@@ -346,7 +346,7 @@ listen_func(CoroutineBase *co) {
 			listen_co.yield();	// Yield to Epoll
 		} else	{
 			epco.add(fd,EPOLLIN|EPOLLHUP|EPOLLRDHUP|EPOLLERR,
-				new SockCoro(sock_func,fd));
+				new Service(sock_func,fd));
 		}
 	}
 
@@ -366,7 +366,7 @@ main(int argc,char **argv) {
 		Sockets::import_ip(straddr,addr);
 		lfd = Sockets::listen(addr,port,backlog);
 		assert(lfd >= 0);
-		bf = scheduler.add(lfd,EPOLLIN,new SockCoro(listen_func,lfd));
+		bf = scheduler.add(lfd,EPOLLIN,new Service(listen_func,lfd));
 		assert(bf);
 	};
 
