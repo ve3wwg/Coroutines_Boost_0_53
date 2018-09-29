@@ -6,9 +6,11 @@
 #ifndef HTTPBUF_HPP
 #define HTTPBUF_HPP
 
-#include <sstream>
+#include "iobuf.hpp"
 
-class HttpBuf : public std::stringstream {
+class HttpBuf : public IOBuf {
+	typedef int (*readcb_t)(int fd,void *buf,size_t bytes,void *arg);
+
 	enum {
 		S0CR1, S0LF1, S0CR2, S0LF2,	// CR LF CR LF
 		S1LF2				// LF LF 
@@ -18,8 +20,9 @@ class HttpBuf : public std::stringstream {
 	short	hdr_elen = 0;
 
 public:	HttpBuf() {};
-	void reset();
+	void reset() noexcept;
 	bool have_end(size_t *pepos,size_t *pelen) noexcept;
+	int read_header(int fd,readcb_t,void *arg) noexcept;
 };
 
 #endif // HTTPBUF_HPP

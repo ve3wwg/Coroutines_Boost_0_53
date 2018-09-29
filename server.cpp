@@ -12,6 +12,7 @@
 #include <assert.h>
 
 #include "scheduler.hpp"
+#include "httpbuf.hpp"
 
 static const char html_endl[] = "\r\n";
 
@@ -40,12 +41,12 @@ sock_func(CoroutineBase *co) {
 	Events& ev = svc.events();				// EPoll events control
 	// Service variables:
 	std::string reqtype, path, httpvers;
-	std::stringstream hbuf, body;
+	HttpBuf hbuf;
+	std::stringstream body;
 	std::stringstream rhdr, rbody;
 	std::unordered_multimap<std::string,std::string> headers;
 	std::size_t content_length = 0;
 	bool keep_alivef = false;				// True when we have Connection: Keep-Alive
-	std::size_t eoh=0, sob=0;
 	char buf[4096];						// Careful to keep under boost::coroutines::stack_allocator::minimum_stacksize()
 	int rc;
 
@@ -133,8 +134,7 @@ sock_func(CoroutineBase *co) {
 	//////////////////////////////////////////////////////////////
 
 	for (;;) {
-		hbuf.str("");
-		hbuf.clear();
+		hbuf.reset();
 		body.str("");
 		body.clear();
 		rhdr.str("");
@@ -148,7 +148,6 @@ sock_func(CoroutineBase *co) {
 		headers.clear();
 		content_length = 0;
 		keep_alivef = false;
-		eoh = sob = 0;
 
 		printf("Expecting request from sock=%d\n",sock);
 
@@ -156,43 +155,15 @@ sock_func(CoroutineBase *co) {
 		// Read loop for headers:
 		//////////////////////////////////////////////////////
 
-		for (;;) {
-			rc = io_read();				// Read what we can
-			if ( rc < 0 )
-				exit_coroutine();		// Hup? Unable to read more
-			if ( rc == 0 )
-				exit_coroutine();		// EOF, did not read full header
-			hbuf.write(buf,rc);			// Deposit data into hbuf
+		auto readcb = [](int fd,void *buf,size_t bytes,void *arg) {
+			Service& svc = *(Service*)arg;
 
-			//////////////////////////////////////////////
-			// Check if we have read the entire header
-			//////////////////////////////////////////////
+			return svc.read_sock(fd,buf,bytes);
+		};
 
-			std::string flattened(hbuf.str());
-			const char *fp = flattened.c_str();
-
-			const char *p = strstr(fp,"\r\n\r\n");
-			if ( !p ) {
-				p = strstr(fp,"\n\n");
-				if ( p ) {
-					eoh = p - fp;
-					sob = eoh + 2;
-				}
-			} else	{
-				eoh = p - fp;
-				sob = eoh + 4;
-			}
-
-			if ( p ) {
-				std::size_t sz = flattened.size();
-				if ( sob < sz ) {
-					// Copy excess header to body:
-					sz -= sob;
-					body.write(flattened.c_str()+sob,sz);
-				}
-				break;		// Read full header
-			} // else try to read some more..
-		}
+		rc = hbuf.read_header(sock,readcb,&svc);
+		if ( rc != 1 )
+			exit_coroutine();		// Fail!
 
 		//////////////////////////////////////////////////////
 		// Extract HTTP header info:

@@ -103,16 +103,38 @@ HttpBuf::have_end(size_t *pepos,size_t *pelen) noexcept {
 }
 
 //////////////////////////////////////////////////////////////////////
-// Reset the object to it's initial state
+// Read until the end of the http header:
+//////////////////////////////////////////////////////////////////////
+
+int
+HttpBuf::read_header(int fd,readcb_t readcb,void *arg) noexcept {
+	char buf[1024];
+	size_t epos=0, elen=0;
+	int rc;
+
+	for (;;) {
+		if ( have_end(&epos,&elen) )
+			return 1;
+		rc = readcb(fd,buf,sizeof buf,arg);
+		if ( rc < 0 )
+			return rc;		// Return I/O error
+		else if ( rc == 0 )
+			return 0;		// EOF!
+		std::stringstream::write(buf,rc);			
+	}
+	return 0;	// Should never get here
+}
+
+//////////////////////////////////////////////////////////////////////
+// Reset stream to initial state
 //////////////////////////////////////////////////////////////////////
 
 void
-HttpBuf::reset() {
+HttpBuf::reset() noexcept {
+	state = S0CR1;
 	hdr_elen = 0;
 	hdr_epos = 0;
-	state = S0CR1;
-	std::stringstream::str("");
-	std::stringstream::clear();
+	IOBuf::reset();
 }
 
 // End httpbuf.cpp
