@@ -37,7 +37,6 @@ sock_func(CoroutineBase *co) {
 	SockCoro& sock_co = *dynamic_cast<SockCoro*>(co);
 	EpollCoro& epco = *dynamic_cast<EpollCoro*>(sock_co.get_caller());
 	const int sock = sock_co.socket();	
-	Events evt(EPOLLIN|EPOLLHUP|EPOLLRDHUP|EPOLLERR);
 	std::string reqtype, path, httpvers;
 	std::stringstream hbuf, body;
 	std::stringstream rhdr, rbody;
@@ -87,18 +86,7 @@ sock_func(CoroutineBase *co) {
 		assert(0);			// Should never get here..
 	};
 
-	//////////////////////////////////////////////////////////////
-	// When yielding to Epoll, update the event flags. After
-	// resuming from Epoll, disable the flags like EPOLLRDHUP
-	// that we now know about.
-	//////////////////////////////////////////////////////////////
-
-	auto epoll_yield = [&]() {
-		if ( evt.update() )		// Event changes?
-			epco.chg(sock,evt.state()); // Yes, update Epoll events
-		sock_co.yield();		// Yield to Epoll
-		evt.disable(sock_co.get_flags()); // Disable flags we received
-	};
+	sock_co.ev.set_ev(EPOLLIN|EPOLLHUP|EPOLLRDHUP|EPOLLERR);
 
 	//////////////////////////////////////////////////////////////
 	// Read from the socket until we block:
@@ -117,7 +105,7 @@ sock_func(CoroutineBase *co) {
 			if ( rc >= 0 )
 				return rc;
 			if ( errno == EWOULDBLOCK ) {
-				epoll_yield();
+				sock_co.yield();
 			} else if ( errno != EINTR ) {
 				printf("ERROR, %s: read(fd=%d\n",strerror(errno),sock);
 				return rc;
@@ -135,7 +123,7 @@ sock_func(CoroutineBase *co) {
 			rc = ::write(sock,p+spos,sz);
 			if ( rc < 0 ) {
 				if ( errno == EWOULDBLOCK )
-					epoll_yield();
+					sock_co.yield();
 				else if ( errno == EINTR )
 					continue;
 				else	{
@@ -317,25 +305,21 @@ sock_func(CoroutineBase *co) {
 		rhdr	<< "Content-Length: " << rbody.tellp() << html_endl
 			<< html_endl;
 
-		evt.disable(EPOLLIN);
-		evt.enable(EPOLLOUT);
-		if ( evt.update() )
-			epco.chg(sock,evt.state(),co);
+		sock_co.ev.disable_ev(EPOLLIN);
+		sock_co.ev.enable_ev(EPOLLOUT);
 
 		printf("Writing response..\n");
 		write_sock(rhdr);
 		write_sock(rbody);
 
-		evt.disable(EPOLLOUT);
-		evt.enable(EPOLLIN);
-		if ( evt.update() )
-			epco.chg(sock,evt.state(),co);
+		sock_co.ev.disable_ev(EPOLLOUT);
+		sock_co.ev.enable_ev(EPOLLIN);
 
 		if ( !keep_alivef ) {
 			printf("Not keep-alive..\n");
 			break;
 		}
-		if ( sock_co.get_flags() & (EPOLLHUP|EPOLLRDHUP|EPOLLERR) )
+		if ( sock_co.er_flags & (EPOLLHUP|EPOLLRDHUP|EPOLLERR) )
 			break;			// No more requests possible
 	}
 

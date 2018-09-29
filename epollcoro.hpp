@@ -18,22 +18,22 @@
 #include <unordered_map>
 
 class Events {
-	uint32_t	evstate=0;
-	uint32_t	evchgs=0;
+	uint32_t	ev_events=0;
+	uint32_t	ev_chgs=0;
 
-public:	Events(uint32_t ev=0) : evstate(ev) {}
+public:	Events(uint32_t ev=0) : ev_events(ev) {}
 
-	void set(uint32_t ev) noexcept		{ evchgs = evstate ^ ev;  }
-	void enable(uint32_t ev) noexcept	{ evchgs = ( (evstate ^ evchgs) | ev ) ^ evstate; }
-	void disable(uint32_t ev) noexcept	{ evchgs = ( (evstate ^ evchgs) & ~ev ) ^ evstate; }
+	void set_ev(uint32_t ev) noexcept	{ ev_chgs = ev ^ ev_events;  }
+	void enable_ev(uint32_t ev) noexcept	{ ev_chgs = ( (ev_events ^ ev_chgs) | ev ) ^ ev_events; }
+	void disable_ev(uint32_t ev) noexcept	{ ev_chgs = ( (ev_events ^ ev_chgs) & ~ev ) ^ ev_events; }
 
-	uint32_t changes() noexcept		{ return evchgs; }
-	uint32_t state() noexcept		{ return evstate; }
+	uint32_t changes() noexcept		{ return ev_chgs; }
+	uint32_t events() noexcept		{ return ev_events; }
 
-	bool update() noexcept {
-		if ( !evchgs )
+	bool sync_ev() noexcept {
+		if ( !ev_chgs )
 			return false;
-		evstate ^= evchgs;		// Apply changes
+		ev_events ^= ev_chgs;		// Apply changes
 		return true;
 	};
 };
@@ -46,14 +46,14 @@ union s_address {
 
 class SockCoro : public Coroutine {
 	int		sock;			// Socket
-	uint32_t	events=0;		// Epoll events
-	uint32_t	flags=0;		// Epoll flags like EPOLLHUP/RDHUP/ERR
 
-public:	SockCoro(fun_t func,int fd) : Coroutine(func), sock(fd) {}
+public:
+	Events		ev;
+	uint32_t	er_flags=0;		// Error flags
+	uint32_t	ev_flags=0;		// Event flags
+
+	SockCoro(fun_t func,int fd) : Coroutine(func), sock(fd) {}
 	int socket() noexcept 			{ return sock; }
-	void set_events(uint32_t ev) noexcept;
-	uint32_t get_events() noexcept 		{ return events; }
-	uint32_t get_flags() noexcept		{ return flags; }
 };
 
 class EpollCoro : public CoroutineMain {
@@ -66,10 +66,11 @@ public:	EpollCoro();
 	virtual void close(int fd);
 	virtual void run();
 
+	void sync(Events& ev) noexcept;
+
 	virtual bool add(int fd,uint32_t events,SockCoro *co);
 	virtual bool del(int fd);
-	virtual bool chg(int fd,uint32_t events,CoroutineBase *co=nullptr);
-	virtual bool chg(int fd,Events& ev,CoroutineBase *co=nullptr);
+	virtual bool chg(int fd,Events& ev,CoroutineBase *co);
 
 	static bool import_ip(const char *straddr,s_address& addr);
 	static bool import_ipv4(const char *ipv4,s_address& addr);

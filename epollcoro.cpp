@@ -33,24 +33,6 @@ EpollCoro::close(int fd) {
 }
 
 bool
-EpollCoro::add(int fd,uint32_t events,SockCoro *co) {
-	struct epoll_event ev;
-	int rc;
-
-	auto it = fdset.find(fd);
-	if ( it != fdset.end() ) {
-		errno = EBADF;
-		return false;
-	}
-
-	fdset[fd] = co;
-	ev.events = events;
-	ev.data.ptr = co;
-	rc = epoll_ctl(efd,EPOLL_CTL_ADD,fd,&ev);
-	return !rc;
-}
-
-bool
 EpollCoro::del(int fd) {
 	int rc;
 
@@ -66,33 +48,28 @@ EpollCoro::del(int fd) {
 }
 
 bool
-EpollCoro::chg(int fd,uint32_t events,CoroutineBase *co) {
-	struct epoll_event ev;
+EpollCoro::add(int fd,uint32_t events,SockCoro *co) {
+	struct epoll_event evt;
 	int rc;
 
-	if ( !co ) {
-		auto it = fdset.find(fd);
-		if ( it == fdset.end() ) {
-			errno = EBADF;
-			return false;
-		}
-		co = it->second;
-	}
-	
-	ev.events = events;
-	ev.data.ptr = co;
-	rc = epoll_ctl(efd,EPOLL_CTL_MOD,fd,&ev);
+	evt.events = events;
+	evt.data.ptr = co;
+	rc = epoll_ctl(efd,EPOLL_CTL_ADD,fd,&evt);
 	return !rc;
 }
 
 bool
 EpollCoro::chg(int fd,Events& ev,CoroutineBase *co) {
-	uint32_t events;
+	struct epoll_event evt;
+	int rc;
 
 	if ( ev.changes() == 0 )
 		return true;			// No changes
-	events = ev.state() ^ ev.changes();	// Required events
-	return chg(fd,events,co);		// Make changes
+
+	evt.events = ev.events();
+	evt.data.ptr = co;
+	rc = epoll_ctl(efd,EPOLL_CTL_MOD,fd,&evt);
+	return !rc;
 }
 
 void
@@ -108,9 +85,13 @@ EpollCoro::run() {
 			for ( int x=0; x<n_events; ++x ) {
 				SockCoro& co = *(SockCoro*)events[x].data.ptr;
 
-				co.set_events(events[x].events);
+				co.ev_flags = events[x].events;
+				co.er_flags |= co.ev_flags & (EPOLLERR|EPOLLHUP|EPOLLRDHUP);
+
 				if ( !yield(co) )
 					delete &co;	// Coroutine is done
+				else if ( co.ev.sync_ev() )
+					chg(co.socket(),co.ev,&co);
 			}
 		} else if ( rc < 0 ) {
 			printf("EpollCoro: %s: epoll_wait()\n",
@@ -219,12 +200,5 @@ EpollCoro::import_ipv6(const char *ipv6,s_address& addr) {
         addr.addr6.sin6_family = AF_INET6;
         return true;
 } 
-
-void
-SockCoro::set_events(uint32_t ev) noexcept {
-	events = ev;
-
-	flags |= (ev & (EPOLLHUP|EPOLLRDHUP|EPOLLERR));
-}
 
 // End epollcoro.cpp
