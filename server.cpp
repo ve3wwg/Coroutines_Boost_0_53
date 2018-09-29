@@ -30,6 +30,7 @@ sock_func(CoroutineBase *co) {
 	std::string reqtype, path, httpvers;
 	HttpBuf hbuf;
 	std::stringstream rhdr, rbody;
+	std::string body;
 	std::unordered_multimap<std::string,std::string> headers;
 	std::size_t content_length = 0;
 	bool keep_alivef = false;				// True when we have Connection: Keep-Alive
@@ -118,6 +119,7 @@ sock_func(CoroutineBase *co) {
 		}
 
 		svc.read_body(sock,hbuf,content_length);
+		body.assign(hbuf.body());
 
 		//////////////////////////////////////////////////////
 		// Form Reponse:
@@ -142,6 +144,9 @@ sock_func(CoroutineBase *co) {
 		}
 
 		rhdr	<< "Content-Length: " << rbody.tellp() << html_endl
+			<< "Extracted body was " << body.size() << " bytes in length" << html_endl
+			<< "Body was:" << html_endl
+			<< body << html_endl
 			<< html_endl;
 
 		ev.disable_ev(EPOLLIN);

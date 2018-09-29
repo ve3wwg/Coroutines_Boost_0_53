@@ -11,6 +11,8 @@
 #include <string.h>
 #include <assert.h>
 
+#include <memory>
+
 #include "httpbuf.hpp"
 #include "utils.hpp"
 
@@ -234,6 +236,25 @@ HttpBuf::parse_headers(
 
 	const std::string& clen = it->second;
 	return strtoul(clen.c_str(),nullptr,10); // Body length
+}
+
+//////////////////////////////////////////////////////////////////////
+// Extract the body out of the present buffer, returning std::string
+//////////////////////////////////////////////////////////////////////
+
+std::string
+HttpBuf::body() noexcept {
+	std::stringstream tstr;
+	std::streamsize n;
+	char buf[2048];
+
+	seekg(hdr_epos + hdr_elen);	// Start of body
+
+	while ( tellg() < tellp() ) {
+		n = std::stringstream::readsome(buf,sizeof buf);
+		tstr.write(buf,n);
+	}
+	return std::move(tstr.str());
 }
 
 // End httpbuf.cpp

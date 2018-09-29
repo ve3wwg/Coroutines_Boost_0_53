@@ -40,4 +40,4 @@ clobber: clean
 	rm -f coroutine .errs.t core
 
 test:
-	wget 'http://127.0.0.1:2345/some/path?var=1&var=2' --save-headers -qO - </dev/null 2>&1
+	wget 'http://127.0.0.1:2345/some/path?var=1&var=2' --save-headers --method=POST --body-data='Some body data..' -qO - </dev/null 2>&1
