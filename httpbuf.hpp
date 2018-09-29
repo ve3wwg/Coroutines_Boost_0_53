@@ -25,7 +25,8 @@ class HttpBuf : public IOBuf {
 public:	HttpBuf() {};
 	void reset() noexcept;
 	bool have_end(size_t *pepos,size_t *pelen) noexcept;
-	int read_header(int fd,readcb_t,void *arg) noexcept;
+	int read_header(int fd,readcb_t readcb,void *arg) noexcept;
+	int read_body(int fd,readcb_t readcb,void *arg,size_t content_length) noexcept;
 	size_t parse_headers(
 	  std::string& reqtype,			// Out: GET/POST
 	  std::string& path,			// Out: Path component

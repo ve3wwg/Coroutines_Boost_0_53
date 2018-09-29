@@ -29,13 +29,10 @@ sock_func(CoroutineBase *co) {
 	// Service variables:
 	std::string reqtype, path, httpvers;
 	HttpBuf hbuf;
-	std::stringstream body;
 	std::stringstream rhdr, rbody;
 	std::unordered_multimap<std::string,std::string> headers;
 	std::size_t content_length = 0;
 	bool keep_alivef = false;				// True when we have Connection: Keep-Alive
-	char buf[4096];						// Careful to keep under boost::coroutines::stack_allocator::minimum_stacksize()
-	int rc;
 
 	//////////////////////////////////////////////////////////////
 	// Lookup a header, return std::string
@@ -48,22 +45,6 @@ sock_func(CoroutineBase *co) {
 		v.assign(it->second);
 		return true;
 	};
-
-#if 0
-	//////////////////////////////////////////////////////////////
-	// Lookup a header, return std::size_t value
-	//////////////////////////////////////////////////////////////
-
-	auto get_header_sz = [&get_header_str](const char *what,std::size_t& v) -> bool {
-		std::string vstr;
-		v = 0;
-		if ( get_header_str(what,vstr) ) {
-			v = strtoul(vstr.c_str(),nullptr,10);
-			return true;
-		}
-		return false;
-	};
-#endif
 
 	//////////////////////////////////////////////////////////////
 	// Terminate the Service processing. WHen Scheduler recieves
@@ -79,27 +60,6 @@ sock_func(CoroutineBase *co) {
 	};
 
 	ev.set_ev(EPOLLIN|EPOLLHUP|EPOLLRDHUP|EPOLLERR);
-
-	//////////////////////////////////////////////////////////////
-	// Read from the socket until we block:
-	//////////////////////////////////////////////////////////////
-
-	auto io_read = [&](size_t max=0) -> int {
-		int rc;	
-
-		if ( max <= 0 )
-			max = sizeof buf;
-		else if ( max > sizeof buf )
-			max = sizeof buf;
-
-		for (;;) {
-			rc = svc.read_sock(sock,buf,max);
-			if ( rc >= 0 )
-				return rc;
-			printf("ERROR, %s: read(fd=%d\n",strerror(errno),sock);
-			return rc;
-		}
-	};
 
 	auto io_write = [&](std::stringstream& s) {
 		std::string flattened(s.str());
@@ -124,8 +84,6 @@ sock_func(CoroutineBase *co) {
 
 	for (;;) {
 		hbuf.reset();
-		body.str("");
-		body.clear();
 		rhdr.str("");
 		rhdr.clear();
 		rbody.str("");
@@ -159,20 +117,7 @@ sock_func(CoroutineBase *co) {
 				keep_alivef = !strcasecmp(keep_alive.c_str(),"Keep-Alive");
 		}
 
-		//////////////////////////////////////////////////////
-		// Read remainder of body, if any:
-		//////////////////////////////////////////////////////
-
-		while ( long(body.tellp()) < long(content_length) ) {
-			rc = io_read(content_length);
-			if ( rc > 0 )
-				body.write(buf,rc);
-			else if ( rc <= 0 )
-				break;
-		}
-
-		if ( long(body.tellp()) != long(content_length) )
-			exit_coroutine();		// Protocol error
+		svc.read_body(sock,hbuf,content_length);
 
 		//////////////////////////////////////////////////////
 		// Form Reponse:

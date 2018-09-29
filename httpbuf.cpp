@@ -127,6 +127,35 @@ HttpBuf::read_header(int fd,readcb_t readcb,void *arg) noexcept {
 }
 
 //////////////////////////////////////////////////////////////////////
+// Read the remainder of the request body, if any:
+//
+// RETURNS:
+//	< 0	Fatal I/O error
+//	>= 0	Size of actually read body
+//////////////////////////////////////////////////////////////////////
+
+int
+HttpBuf::read_body(int fd,readcb_t readcb,void *arg,size_t content_length) noexcept {
+	size_t bpos = hdr_epos + hdr_elen;
+	char buf[2048];
+	int rc;
+
+	assert(size_t(tellp()) >= bpos);
+	if ( content_length <= 0 )
+		return size_t(tellp()) - bpos;	// Content length
+
+	while ( size_t(tellp()) < bpos + content_length ) {
+		rc = readcb(fd,buf,sizeof buf,arg);
+		if ( rc < 0 )
+			return rc;		// Return I/O error
+		else if ( rc == 0 )
+			return 0;		// EOF!
+		std::stringstream::write(buf,rc);			
+	}
+	return size_t(tellp()) - bpos;		// Actual body size (read)
+}
+
+//////////////////////////////////////////////////////////////////////
 // Reset stream to initial state
 //////////////////////////////////////////////////////////////////////
 

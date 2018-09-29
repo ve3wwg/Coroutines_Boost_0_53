@@ -161,14 +161,31 @@ Service::write_sock(int fd,const void *buf,size_t bytes) noexcept {
 
 int
 Service::read_header(int fd,HttpBuf& buf) noexcept {
-
-	auto readcb = [](int fd,void *buf,size_t bytes,void *arg) {
-		Service& svc = *(Service*)arg;
-
-		return svc.read_sock(fd,buf,bytes);
-	};
-
-	return buf.read_header(sock,readcb,this);
+	return buf.read_header(sock,read_cb,this);
 }
+
+//////////////////////////////////////////////////////////////////////
+// Read the remainder of the body, according to content_length:
+//
+// RETURNS:
+//	< 0	Fatal error
+//	>= 0	Actual body length read
+//////////////////////////////////////////////////////////////////////
+
+int
+Service::read_body(int fd,HttpBuf& buf,size_t content_length) noexcept {
+	return buf.read_body(sock,read_cb,this,content_length);
+}
+
+//////////////////////////////////////////////////////////////////////
+// Internal: Read callback
+//////////////////////////////////////////////////////////////////////
+
+int
+Service::read_cb(int fd,void *buf,size_t bytes,void *arg) noexcept {
+	Service& svc = *(Service*)arg;
+
+	return svc.read_sock(fd,buf,bytes);
+};
 
 // End scheduler.cpp

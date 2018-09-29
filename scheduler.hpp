@@ -29,6 +29,8 @@ class Service : public Coroutine {
 	uint32_t	er_flags=0;		// Error flags received (EPOLLHUP etc.)
 	uint32_t	ev_flags=0;		// Event flags recevied (EPOLLIN|EPOLLOUT|error flags seen this time only)
 
+	static int read_cb(int fd,void *buf,size_t bytes,void *arg) noexcept;
+
 public:	Service(fun_t func,int fd) : Coroutine(func), sock(fd) {}
 	int socket() noexcept 			{ return sock; }
 	Events &events() noexcept		{ return ev; }
@@ -36,6 +38,7 @@ public:	Service(fun_t func,int fd) : Coroutine(func), sock(fd) {}
 	uint32_t evt_flags() noexcept		{ return ev_flags; }
 
 	int read_header(int fd,HttpBuf& buf) noexcept;
+	int read_body(int fd,HttpBuf& buf,size_t content_length) noexcept;
 	int read_sock(int fd,void *buf,size_t bytes) noexcept;
 	int write_sock(int fd,const void *buf,size_t bytes) noexcept;
 
