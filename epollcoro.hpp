@@ -7,10 +7,6 @@
 #define EPOLLCORO_HPP
 
 #include <stdint.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <net/if.h>
 #include <sys/epoll.h>
 
 #include "coroutine.hpp"
@@ -18,12 +14,7 @@
 #include <unordered_map>
 
 #include "events.hpp"
-
-union s_address {
-	struct sockaddr		addr;
-	struct sockaddr_in 	addr4;		// AF_INET
-	struct sockaddr_in6	addr6;		// AF_INET6
-};
+#include "sockets.hpp"
 
 class SockCoro : public Coroutine {
 	int		sock;			// Socket
@@ -53,10 +44,10 @@ public:	EpollCoro();
 	virtual bool del(int fd);
 	virtual bool chg(int fd,Events& ev,CoroutineBase *co);
 
-	static bool import_ip(const char *straddr,s_address& addr);
-	static bool import_ipv4(const char *ipv4,s_address& addr);
-	static bool import_ipv6(const char *ipv6,s_address& addr);
-	static int listen(s_address& address,int port,unsigned backlog,bool reuse_port=false);
+	static bool import_ip(const char *straddr,u_address& addr);
+	static bool import_ipv4(const char *ipv4,u_address& addr);
+	static bool import_ipv6(const char *ipv6,u_address& addr);
+	static int listen(u_address& address,int port,unsigned backlog,bool reuse_port=false);
 };
 
 #endif // EPOLLCORO_HPP

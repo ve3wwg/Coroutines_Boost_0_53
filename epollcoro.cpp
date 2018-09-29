@@ -101,7 +101,7 @@ EpollCoro::run() {
 }
 
 int
-EpollCoro::listen(s_address& address,int port,unsigned backlog,bool reuse_port) {
+EpollCoro::listen(u_address& address,int port,unsigned backlog,bool reuse_port) {
         static const int one = 1;
 	int sock, af = address.addr4.sin_family;
 	int rc;
@@ -161,7 +161,7 @@ EpollCoro::listen(s_address& address,int port,unsigned backlog,bool reuse_port) 
 }
 
 bool
-EpollCoro::import_ip(const char *straddr,s_address& addr) {
+EpollCoro::import_ip(const char *straddr,u_address& addr) {
         bool ipv4f = !!strchr(straddr,'.');  // IPv4 uses '.'
         
         if ( ipv4f )
@@ -170,7 +170,7 @@ EpollCoro::import_ip(const char *straddr,s_address& addr) {
 }
 
 bool
-EpollCoro::import_ipv4(const char *ipv4,s_address& addr) {
+EpollCoro::import_ipv4(const char *ipv4,u_address& addr) {
 
         memset(&addr.addr4,0,sizeof addr.addr4);
         if ( !inet_aton(ipv4,&addr.addr4.sin_addr) )
@@ -180,7 +180,7 @@ EpollCoro::import_ipv4(const char *ipv4,s_address& addr) {
 }
 
 bool
-EpollCoro::import_ipv6(const char *ipv6,s_address& addr) {
+EpollCoro::import_ipv6(const char *ipv6,u_address& addr) {
         char saddr[strlen(ipv6)+1];
         char *iface;   
 

@@ -335,7 +335,7 @@ static CoroutineBase *
 listen_func(CoroutineBase *co) {
 	SockCoro& listen_co = *(SockCoro*)co;
 	EpollCoro& epco = *dynamic_cast<EpollCoro*>(listen_co.get_caller());
-	s_address addr;
+	u_address addr;
 	socklen_t addrlen = sizeof addr;
 	int lsock = listen_co.socket();
 	int fd;
@@ -359,7 +359,7 @@ main(int argc,char **argv) {
 	int port = 2345, backlog = 50;
 
 	auto add_listen_port = [&](const char *straddr) {
-		s_address addr;
+		u_address addr;
 		int lfd = -1;
 		bool bf;
 
