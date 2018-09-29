@@ -82,16 +82,20 @@ Scheduler::run() {
 		rc = epoll_wait(efd,&events[0],max_events,10);
 		if ( rc > 0 ) {
 			n_events = rc;
+
 			for ( int x=0; x<n_events; ++x ) {
-				Service& co = *(Service*)events[x].data.ptr;
+				Service& svc = *(Service*)events[x].data.ptr;
 
-				co.ev_flags = events[x].events;
-				co.er_flags |= co.ev_flags & (EPOLLERR|EPOLLHUP|EPOLLRDHUP);
+				svc.ev_flags = events[x].events;
+				svc.er_flags |= svc.ev_flags & (EPOLLERR|EPOLLHUP|EPOLLRDHUP);
 
-				if ( !yield(co) )
-					delete &co;	// Coroutine is done
-				else if ( co.ev.sync_ev() )
-					chg(co.socket(),co.ev,&co);
+				if ( !yield(svc) )			// Invoke service coroutine
+					delete &svc;			// Coroutine has terminated
+				else	{
+					svc.ev.disable_ev(svc.er_flags);	// No longer require notification of seen errors
+					if ( svc.ev.sync_ev() )			// Changes to desired event notifications?
+						chg(svc.socket(),svc.ev,&svc);	// Yes, make them so
+				}
 			}
 		} else if ( rc < 0 ) {
 			printf("Scheduler: %s: epoll_wait()\n",
