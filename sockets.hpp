@@ -17,6 +17,13 @@ union u_address {
 	struct sockaddr_in6	addr6;		// AF_INET6
 };
 
+namespace Sockets {
+	bool import_ip(const char *straddr,u_address& addr);
+	bool import_ipv4(const char *ipv4,u_address& addr);
+	bool import_ipv6(const char *ipv6,u_address& addr);
+	int listen(u_address& address,int port,unsigned backlog,bool reuse_port=false);
+}
+
 #endif // SOCKETS_HPP
 
 // End sockets.hpp

@@ -43,11 +43,6 @@ public:	EpollCoro();
 	virtual bool add(int fd,uint32_t events,SockCoro *co);
 	virtual bool del(int fd);
 	virtual bool chg(int fd,Events& ev,CoroutineBase *co);
-
-	static bool import_ip(const char *straddr,u_address& addr);
-	static bool import_ipv4(const char *ipv4,u_address& addr);
-	static bool import_ipv6(const char *ipv6,u_address& addr);
-	static int listen(u_address& address,int port,unsigned backlog,bool reuse_port=false);
 };
 
 #endif // EPOLLCORO_HPP

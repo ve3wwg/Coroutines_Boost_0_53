@@ -363,8 +363,8 @@ main(int argc,char **argv) {
 		int lfd = -1;
 		bool bf;
 
-		EpollCoro::import_ip(straddr,addr);
-		lfd = EpollCoro::listen(addr,port,backlog);
+		Sockets::import_ip(straddr,addr);
+		lfd = Sockets::listen(addr,port,backlog);
 		assert(lfd >= 0);
 		bf = epco.add(lfd,EPOLLIN,new SockCoro(listen_func,lfd));
 		assert(bf);
