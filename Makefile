@@ -13,6 +13,8 @@ LIBS	= $(BOOST)/lib
 
 all:	boost_check coroutine server
 
+OBJS	= epollcoro.o server.o sockets.o
+
 boost_check:
 	@if [ ! -d $(BOOST)/. ] ; then \
 		echo "export or supply BOOST=<boost_1.53.0_dir>" ; \
@@ -28,8 +30,8 @@ coroutine.o: coroutine.hpp
 coroutine: coroutine.o
 	$(CXX) coroutine.o -L$(LIBS) -lboost_context -dl -o coroutine -Wl,-rpath=$(LIBS)
 
-server:	epollcoro.o server.o
-	$(CXX) epollcoro.o server.o -L$(LIBS) -lboost_context -dl -o server -Wl,-rpath=$(LIBS)
+server:	$(OBJS)
+	$(CXX) $(OBJS) -L$(LIBS) -lboost_context -dl -o server -Wl,-rpath=$(LIBS)
 
 clean:
 	rm -f *.o
