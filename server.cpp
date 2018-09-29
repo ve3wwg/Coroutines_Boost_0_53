@@ -1,5 +1,5 @@
 //////////////////////////////////////////////////////////////////////
-// server.cpp -- Test EpollCoro http server.
+// server.cpp -- Test http server.
 // Date: Sat Aug 11 15:47:54 2018   (C) ve3wwg@gmail.com
 ///////////////////////////////////////////////////////////////////////
 
@@ -34,10 +34,11 @@ ucase(char *buf) {
 
 static CoroutineBase *
 sock_func(CoroutineBase *co) {
-	Service& sock_co = *dynamic_cast<Service*>(co);
-	Scheduler& scheduler = *dynamic_cast<Scheduler*>(sock_co.get_caller());
-	const int sock = sock_co.socket();			// Socket
-	Events& ev = sock_co.events();				// EPoll events control
+	Service& svc = *dynamic_cast<Service*>(co);		// This coroutine that is scheduled
+	Scheduler& scheduler = *dynamic_cast<Scheduler*>(svc.get_caller()); // Invoking scheduler
+	const int sock = svc.socket();			// Socket being processed
+	Events& ev = svc.events();				// EPoll events control
+	// Service variables:
 	std::string reqtype, path, httpvers;
 	std::stringstream hbuf, body;
 	std::stringstream rhdr, rbody;
@@ -76,15 +77,15 @@ sock_func(CoroutineBase *co) {
 
 	//////////////////////////////////////////////////////////////
 	// Terminate the Service processing. WHen Scheduler recieves
-	// a nullptr, it knows to destroy this coroutine.
+	// a nullptr, it will destroy this coroutine.
 	//////////////////////////////////////////////////////////////
 
 	auto exit_coroutine = [&]() {
 		printf("Exit coroutine sock=%d\n",sock);
 		scheduler.del(sock);			// Remove our socket from Epoll
-		close(sock);			// Close the socket
-		sock_co.yield_with(nullptr);	// Tell Epoll to drop us
-		assert(0);			// Should never get here..
+		close(sock);				// Close the socket
+		svc.yield_with(nullptr);		// Tell Epoll to drop us
+		assert(0);				// Should never get here..
 	};
 
 	ev.set_ev(EPOLLIN|EPOLLHUP|EPOLLRDHUP|EPOLLERR);
@@ -106,7 +107,7 @@ sock_func(CoroutineBase *co) {
 			if ( rc >= 0 )
 				return rc;
 			if ( errno == EWOULDBLOCK ) {
-				sock_co.yield();
+				svc.yield();
 			} else if ( errno != EINTR ) {
 				printf("ERROR, %s: read(fd=%d\n",strerror(errno),sock);
 				return rc;
@@ -124,7 +125,7 @@ sock_func(CoroutineBase *co) {
 			rc = ::write(sock,p+spos,sz);
 			if ( rc < 0 ) {
 				if ( errno == EWOULDBLOCK )
-					sock_co.yield();
+					svc.yield();
 				else if ( errno == EINTR )
 					continue;
 				else	{
@@ -320,7 +321,7 @@ sock_func(CoroutineBase *co) {
 			printf("Not keep-alive..\n");
 			break;
 		}
-		if ( sock_co.err_flags() & (EPOLLHUP|EPOLLRDHUP|EPOLLERR) )
+		if ( svc.err_flags() & (EPOLLHUP|EPOLLRDHUP|EPOLLERR) )
 			break;			// No more requests possible
 	}
 

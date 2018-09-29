@@ -17,16 +17,16 @@
 class Scheduler;
 
 //////////////////////////////////////////////////////////////////////
-// Server processes the Service class:
+// Scheduler processes the Service class:
 //////////////////////////////////////////////////////////////////////
 
 class Service : public Coroutine {
 	friend Scheduler;
 
 	int		sock;			// Socket
-	Events		ev;
-	uint32_t	er_flags=0;		// Error flags
-	uint32_t	ev_flags=0;		// Event flags
+	Events		ev;			// Desired epoll(2) events
+	uint32_t	er_flags=0;		// Error flags received (EPOLLHUP etc.)
+	uint32_t	ev_flags=0;		// Event flags recevied (EPOLLIN|EPOLLOUT|error flags seen this time only)
 
 public:	Service(fun_t func,int fd) : Coroutine(func), sock(fd) {}
 	int socket() noexcept 			{ return sock; }
@@ -47,6 +47,7 @@ class Scheduler : public CoroutineMain {
 
 public:	Scheduler();
 	~Scheduler();
+
 	void close(int fd);
 	void run();
 

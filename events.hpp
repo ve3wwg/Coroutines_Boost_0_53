@@ -8,9 +8,13 @@
 
 #include <stdint.h>
 
+//////////////////////////////////////////////////////////////////////
+// Manage epoll(2) event notifications:
+//////////////////////////////////////////////////////////////////////
+
 class Events {
-	uint32_t	ev_events=0;
-	uint32_t	ev_chgs=0;
+	uint32_t	ev_events=0;		// Events required
+	uint32_t	ev_chgs=0;		// Changes to ev_events (xor)
 
 public:	Events(uint32_t ev=0) : ev_events(ev) {}
 
