@@ -14,20 +14,25 @@
 #include "events.hpp"
 #include "sockets.hpp"
 
+class Scheduler;
+
 //////////////////////////////////////////////////////////////////////
 // Server processes the Service class:
 //////////////////////////////////////////////////////////////////////
 
 class Service : public Coroutine {
-	int		sock;			// Socket
+	friend Scheduler;
 
-public:
+	int		sock;			// Socket
 	Events		ev;
 	uint32_t	er_flags=0;		// Error flags
 	uint32_t	ev_flags=0;		// Event flags
 
-	Service(fun_t func,int fd) : Coroutine(func), sock(fd) {}
+public:	Service(fun_t func,int fd) : Coroutine(func), sock(fd) {}
 	int socket() noexcept 			{ return sock; }
+	Events &events() noexcept		{ return ev; }
+	uint32_t err_flags() noexcept		{ return er_flags; }
+	uint32_t evt_flags() noexcept		{ return ev_flags; }
 };
 
 

@@ -35,8 +35,9 @@ ucase(char *buf) {
 static CoroutineBase *
 sock_func(CoroutineBase *co) {
 	Service& sock_co = *dynamic_cast<Service*>(co);
-	Scheduler& epco = *dynamic_cast<Scheduler*>(sock_co.get_caller());
-	const int sock = sock_co.socket();	
+	Scheduler& scheduler = *dynamic_cast<Scheduler*>(sock_co.get_caller());
+	const int sock = sock_co.socket();			// Socket
+	Events& ev = sock_co.events();				// EPoll events control
 	std::string reqtype, path, httpvers;
 	std::stringstream hbuf, body;
 	std::stringstream rhdr, rbody;
@@ -80,13 +81,13 @@ sock_func(CoroutineBase *co) {
 
 	auto exit_coroutine = [&]() {
 		printf("Exit coroutine sock=%d\n",sock);
-		epco.del(sock);			// Remove our socket from Epoll
+		scheduler.del(sock);			// Remove our socket from Epoll
 		close(sock);			// Close the socket
 		sock_co.yield_with(nullptr);	// Tell Epoll to drop us
 		assert(0);			// Should never get here..
 	};
 
-	sock_co.ev.set_ev(EPOLLIN|EPOLLHUP|EPOLLRDHUP|EPOLLERR);
+	ev.set_ev(EPOLLIN|EPOLLHUP|EPOLLRDHUP|EPOLLERR);
 
 	//////////////////////////////////////////////////////////////
 	// Read from the socket until we block:
@@ -305,21 +306,21 @@ sock_func(CoroutineBase *co) {
 		rhdr	<< "Content-Length: " << rbody.tellp() << html_endl
 			<< html_endl;
 
-		sock_co.ev.disable_ev(EPOLLIN);
-		sock_co.ev.enable_ev(EPOLLOUT);
+		ev.disable_ev(EPOLLIN);
+		ev.enable_ev(EPOLLOUT);
 
 		printf("Writing response..\n");
 		write_sock(rhdr);
 		write_sock(rbody);
 
-		sock_co.ev.disable_ev(EPOLLOUT);
-		sock_co.ev.enable_ev(EPOLLIN);
+		ev.disable_ev(EPOLLOUT);
+		ev.enable_ev(EPOLLIN);
 
 		if ( !keep_alivef ) {
 			printf("Not keep-alive..\n");
 			break;
 		}
-		if ( sock_co.er_flags & (EPOLLHUP|EPOLLRDHUP|EPOLLERR) )
+		if ( sock_co.err_flags() & (EPOLLHUP|EPOLLRDHUP|EPOLLERR) )
 			break;			// No more requests possible
 	}
 
@@ -334,7 +335,7 @@ sock_func(CoroutineBase *co) {
 static CoroutineBase *
 listen_func(CoroutineBase *co) {
 	Service& listen_co = *(Service*)co;
-	Scheduler& epco = *dynamic_cast<Scheduler*>(listen_co.get_caller());
+	Scheduler& scheduler = *dynamic_cast<Scheduler*>(listen_co.get_caller());
 	u_address addr;
 	socklen_t addrlen = sizeof addr;
 	int lsock = listen_co.socket();
@@ -345,7 +346,7 @@ listen_func(CoroutineBase *co) {
 		if ( fd < 0 ) {
 			listen_co.yield();	// Yield to Epoll
 		} else	{
-			epco.add(fd,EPOLLIN|EPOLLHUP|EPOLLRDHUP|EPOLLERR,
+			scheduler.add(fd,EPOLLIN|EPOLLHUP|EPOLLRDHUP|EPOLLERR,
 				new Service(sock_func,fd));
 		}
 	}
