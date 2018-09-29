@@ -104,4 +104,50 @@ Scheduler::run() {
 	}
 }
 
+int
+Service::read_sock(int fd,void *buf,size_t bytes) noexcept {
+	int rc;
+
+	for (;;) {
+		rc = ::read(fd,buf,bytes);
+		if ( rc < 0 ) {
+			switch ( errno ) {
+			case EINTR:
+				break;			// Signaled, retry..
+			case EWOULDBLOCK:
+				yield();		// No data to read, yet.
+				break;
+			default:
+				return -errno;		// Fail..
+			}
+		} else	{
+			return rc;			// Return what we've read
+		}
+	}
+	return -errno;					// Should never get here
+}
+
+int
+Service::write_sock(int fd,const void *buf,size_t bytes) noexcept {
+	int rc;
+
+	for (;;) {
+		rc = ::write(fd,buf,bytes);
+		if ( rc < 0 ) {
+			switch ( errno ) {
+			case EINTR:
+				break;			// Signaled, retry..
+			case EWOULDBLOCK:
+				yield();		// Unable to write, yet.
+				break;
+			default:
+				return -errno;		// Fail..
+			}
+		} else	{
+			return rc;			// Return what we've written
+		}
+	}
+	return -errno;					// Should never get here
+}
+
 // End scheduler.cpp

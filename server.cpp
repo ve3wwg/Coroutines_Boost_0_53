@@ -94,7 +94,7 @@ sock_func(CoroutineBase *co) {
 	// Read from the socket until we block:
 	//////////////////////////////////////////////////////////////
 
-	auto read_sock = [&](size_t max=0) -> int {
+	auto io_read = [&](size_t max=0) -> int {
 		int rc;	
 
 		if ( max <= 0 )
@@ -103,34 +103,24 @@ sock_func(CoroutineBase *co) {
 			max = sizeof buf;
 
 		for (;;) {
-			rc = ::read(sock,buf,max);
+			rc = svc.read_sock(sock,buf,max);
 			if ( rc >= 0 )
 				return rc;
-			if ( errno == EWOULDBLOCK ) {
-				svc.yield();
-			} else if ( errno != EINTR ) {
-				printf("ERROR, %s: read(fd=%d\n",strerror(errno),sock);
-				return rc;
-			}
+			printf("ERROR, %s: read(fd=%d\n",strerror(errno),sock);
+			return rc;
 		}
 	};
 
-	auto write_sock = [&](std::stringstream& s) {
+	auto io_write = [&](std::stringstream& s) {
 		std::string flattened(s.str());
 		const char *p = flattened.c_str();
 		std::size_t spos = 0, sz = flattened.size();
 		int rc;
 
 		while ( spos < sz ) {
-			rc = ::write(sock,p+spos,sz);
+			rc = svc.write_sock(sock,p+spos,sz);
 			if ( rc < 0 ) {
-				if ( errno == EWOULDBLOCK )
-					svc.yield();
-				else if ( errno == EINTR )
-					continue;
-				else	{
-					exit_coroutine(); // Fatal error
-				}
+				exit_coroutine(); // Fatal error
 			} else	{
 				spos += rc;
 				sz -= rc;
@@ -167,7 +157,7 @@ sock_func(CoroutineBase *co) {
 		//////////////////////////////////////////////////////
 
 		for (;;) {
-			rc = read_sock();			// Read what we can
+			rc = io_read();				// Read what we can
 			if ( rc < 0 )
 				exit_coroutine();		// Hup? Unable to read more
 			if ( rc == 0 )
@@ -272,7 +262,7 @@ sock_func(CoroutineBase *co) {
 		//////////////////////////////////////////////////////
 
 		while ( long(body.tellp()) < long(content_length) ) {
-			rc = read_sock(content_length);
+			rc = io_read(content_length);
 			if ( rc > 0 )
 				body.write(buf,rc);
 			else if ( rc <= 0 )
@@ -311,8 +301,8 @@ sock_func(CoroutineBase *co) {
 		ev.enable_ev(EPOLLOUT);
 
 		printf("Writing response..\n");
-		write_sock(rhdr);
-		write_sock(rbody);
+		io_write(rhdr);
+		io_write(rbody);
 
 		ev.disable_ev(EPOLLOUT);
 		ev.enable_ev(EPOLLIN);
