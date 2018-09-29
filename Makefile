@@ -13,7 +13,7 @@ LIBS	= $(BOOST)/lib
 
 all:	boost_check coroutine server
 
-OBJS	= epollcoro.o server.o sockets.o
+OBJS	= scheduler.o server.o sockets.o
 
 boost_check:
 	@if [ ! -d $(BOOST)/. ] ; then \

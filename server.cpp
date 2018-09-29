@@ -11,7 +11,7 @@
 #include <string.h>
 #include <assert.h>
 
-#include "epollcoro.hpp"
+#include "scheduler.hpp"
 
 static const char html_endl[] = "\r\n";
 
@@ -35,7 +35,7 @@ ucase(char *buf) {
 static CoroutineBase *
 sock_func(CoroutineBase *co) {
 	SockCoro& sock_co = *dynamic_cast<SockCoro*>(co);
-	EpollCoro& epco = *dynamic_cast<EpollCoro*>(sock_co.get_caller());
+	Scheduler& epco = *dynamic_cast<Scheduler*>(sock_co.get_caller());
 	const int sock = sock_co.socket();	
 	std::string reqtype, path, httpvers;
 	std::stringstream hbuf, body;
@@ -74,7 +74,7 @@ sock_func(CoroutineBase *co) {
 	};
 
 	//////////////////////////////////////////////////////////////
-	// Terminate the SockCoro processing. WHen EpollCoro recieves
+	// Terminate the SockCoro processing. WHen Scheduler recieves
 	// a nullptr, it knows to destroy this coroutine.
 	//////////////////////////////////////////////////////////////
 
@@ -334,7 +334,7 @@ sock_func(CoroutineBase *co) {
 static CoroutineBase *
 listen_func(CoroutineBase *co) {
 	SockCoro& listen_co = *(SockCoro*)co;
-	EpollCoro& epco = *dynamic_cast<EpollCoro*>(listen_co.get_caller());
+	Scheduler& epco = *dynamic_cast<Scheduler*>(listen_co.get_caller());
 	u_address addr;
 	socklen_t addrlen = sizeof addr;
 	int lsock = listen_co.socket();
@@ -355,7 +355,7 @@ listen_func(CoroutineBase *co) {
 
 int
 main(int argc,char **argv) {
-	EpollCoro epco;
+	Scheduler scheduler;
 	int port = 2345, backlog = 50;
 
 	auto add_listen_port = [&](const char *straddr) {
@@ -366,7 +366,7 @@ main(int argc,char **argv) {
 		Sockets::import_ip(straddr,addr);
 		lfd = Sockets::listen(addr,port,backlog);
 		assert(lfd >= 0);
-		bf = epco.add(lfd,EPOLLIN,new SockCoro(listen_func,lfd));
+		bf = scheduler.add(lfd,EPOLLIN,new SockCoro(listen_func,lfd));
 		assert(bf);
 	};
 
@@ -377,7 +377,7 @@ main(int argc,char **argv) {
 			add_listen_port(argv[x]);
 	}
 
-	epco.run();
+	scheduler.run();
 	return 0;
 }
 
