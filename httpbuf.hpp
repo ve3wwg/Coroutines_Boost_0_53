@@ -13,6 +13,7 @@
 
 class HttpBuf : public IOBuf {
 	typedef int (*readcb_t)(int fd,void *buf,size_t bytes,void *arg);
+	typedef int (*writecb_t)(int fd,const void *buf,size_t bytes,void *arg);
 
 	enum {
 		S0CR1, S0LF1, S0CR2, S0LF2,	// CR LF CR LF
@@ -27,6 +28,7 @@ public:	HttpBuf() {};
 	bool have_end(size_t *pepos,size_t *pelen) noexcept; 				// True if we have read end of header
 	int read_header(int fd,readcb_t readcb,void *arg) noexcept; 			// Read up to end of header
 	int read_body(int fd,readcb_t readcb,void *arg,size_t content_length) noexcept;	// Ready full body
+	int write(int fd,writecb_t,void *arg) noexcept;					// Write buffer to fd
 	std::string body() noexcept;		// Extract body
 	size_t parse_headers(
 	  std::string& reqtype,			// Out: GET/POST

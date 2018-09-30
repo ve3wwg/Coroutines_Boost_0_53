@@ -177,6 +177,11 @@ Service::read_body(int fd,HttpBuf& buf,size_t content_length) noexcept {
 	return buf.read_body(sock,read_cb,this,content_length);
 }
 
+int
+Service::write(int fd,HttpBuf& buf) noexcept {
+	return buf.write(sock,write_cb,this);
+}
+
 //////////////////////////////////////////////////////////////////////
 // Internal: Read callback
 //////////////////////////////////////////////////////////////////////
@@ -186,6 +191,13 @@ Service::read_cb(int fd,void *buf,size_t bytes,void *arg) noexcept {
 	Service& svc = *(Service*)arg;
 
 	return svc.read_sock(fd,buf,bytes);
+};
+
+int
+Service::write_cb(int fd,const void *buf,size_t bytes,void *arg) noexcept {
+	Service& svc = *(Service*)arg;
+
+	return svc.write_sock(fd,buf,bytes);
 };
 
 // End scheduler.cpp

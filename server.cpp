@@ -29,7 +29,7 @@ sock_func(CoroutineBase *co) {
 	// Service variables:
 	std::string reqtype, path, httpvers;
 	HttpBuf hbuf;
-	std::stringstream rhdr, rbody;
+	HttpBuf rhdr, rbody;
 	std::string body;
 	std::unordered_multimap<std::string,std::string> headers;
 	std::size_t content_length = 0;
@@ -62,33 +62,14 @@ sock_func(CoroutineBase *co) {
 
 	ev.set_ev(EPOLLIN|EPOLLHUP|EPOLLRDHUP|EPOLLERR);
 
-	auto io_write = [&](std::stringstream& s) {
-		std::string flattened(s.str());
-		const char *p = flattened.c_str();
-		std::size_t spos = 0, sz = flattened.size();
-		int rc;
-
-		while ( spos < sz ) {
-			rc = svc.write_sock(sock,p+spos,sz);
-			if ( rc < 0 ) {
-				exit_coroutine(); // Fatal error
-			} else	{
-				spos += rc;
-				sz -= rc;
-			}
-		}
-	};
-
 	//////////////////////////////////////////////////////////////
 	// Keep-Alive Loop:
 	//////////////////////////////////////////////////////////////
 
 	for (;;) {
 		hbuf.reset();
-		rhdr.str("");
-		rhdr.clear();
-		rbody.str("");
-		rbody.clear();
+		rhdr.reset();
+		rbody.reset();
 
 		reqtype.clear();
 		path.clear();
@@ -152,9 +133,8 @@ sock_func(CoroutineBase *co) {
 		ev.disable_ev(EPOLLIN);
 		ev.enable_ev(EPOLLOUT);
 
-		printf("Writing response..\n");
-		io_write(rhdr);
-		io_write(rbody);
+		svc.write(sock,rhdr);
+		svc.write(sock,rbody);
 
 		ev.disable_ev(EPOLLOUT);
 		ev.enable_ev(EPOLLIN);

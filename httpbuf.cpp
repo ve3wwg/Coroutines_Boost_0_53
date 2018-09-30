@@ -257,4 +257,33 @@ HttpBuf::body() noexcept {
 	return std::move(tstr.str());
 }
 
+//////////////////////////////////////////////////////////////////////
+// Write buffer contents out to socket:
+//
+// RETURNS:
+//	< 0	Error
+//	1	Success
+//////////////////////////////////////////////////////////////////////
+
+int
+HttpBuf::write(int fd,writecb_t writecb,void *arg) noexcept {
+	char buf[2048];
+	size_t n, gpos = tellg(), ppos = tellp();
+	int rc;
+
+	while ( gpos < ppos ) {
+		n = std::stringstream::readsome(buf,sizeof buf);
+		if ( n == 0 )
+			return 1;		// Success
+		rc = writecb(fd,buf,n,arg);
+		if ( rc < 0 ) {
+			seekg(gpos);
+			return rc;		// Fail
+		}
+		seekg(gpos + rc);
+	}
+	return 1;				// Success
+}
+
 // End httpbuf.cpp
+
