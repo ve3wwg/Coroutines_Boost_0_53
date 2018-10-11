@@ -14,8 +14,8 @@ typedef boost::intrusive::list_member_hook<> EvNode;	// Node to be included in O
 
 template<typename Object>
 class EvTimer {
-	typedef boost::intrusive::member_hook<Object,boost::intrusive::list_member_hook<>,&Object::evnode> MemberHookOption;
-	typedef boost::intrusive::list<Object,MemberHookOption> ObjList;
+	typedef boost::intrusive::member_hook<Object,EvNode,&Object::evnode> MemberHook;
+	typedef boost::intrusive::list<Object,MemberHook> ObjList;
 
 	time_t		epoch=0;			// carray[0] begins at this time (needs to be timespec)
 
