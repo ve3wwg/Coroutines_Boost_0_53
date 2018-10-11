@@ -24,6 +24,8 @@ public:	CircArray(size_t size);
 template<typename T>
 CircArray<T>::CircArray(size_t size) : sz(size) {
 
+	if ( size <= 0 )
+		abort();
 	array = new T[size];
 	for ( size_t x=0; x<size; ++x )
 		array[x] = T();
@@ -31,7 +33,7 @@ CircArray<T>::CircArray(size_t size) : sz(size) {
 
 template<typename T>
 CircArray<T>::~CircArray() {
-	delete array;
+	delete[] array;
 	array = nullptr;
 }
 
