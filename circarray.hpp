@@ -19,6 +19,7 @@ public:	CircArray(size_t size);
 	size_t size() const noexcept 	{ return sz; }
 	T& advance(size_t n) noexcept;
 	T& operator[](size_t x) noexcept;
+	size_t head() noexcept		{ return headx; }
 };
 
 template<typename T>
