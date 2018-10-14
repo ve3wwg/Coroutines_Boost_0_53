@@ -14,7 +14,7 @@
 #include <memory>
 
 #include "httpbuf.hpp"
-#include "utils.hpp"
+#include "utility.hpp"
 
 //////////////////////////////////////////////////////////////////////
 // Test if the std::stringstream has the http end header sequence
