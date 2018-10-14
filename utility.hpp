@@ -8,11 +8,8 @@
 
 #include <time.h>
 
-inline
-timespec& timeofday(timespec &tod) {
-	::clock_gettime(CLOCK_MONOTONIC,&tod);
-	return tod;
-}
+void ucase_buffer(char *buf);
+timespec& timeofday(timespec &tod);
 
 inline
 bool operator==(const timespec& a,const timespec &b) noexcept {
