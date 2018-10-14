@@ -27,7 +27,7 @@ class EvTimer {
 
 	void visit(unsigned x,void (*cb)(Object& object,void *arg),void *arg) noexcept;		// Needs to be private..
 
-public:	EvTimer(unsigned secs_max,unsigned granlarity_ms) noexcept;
+public:	EvTimer(unsigned secs_max,unsigned granularity_ms) noexcept;
 	EvTimer& insert(long ms,Object& object) noexcept;
 	EvTimer& expire(const timespec& now,void (*cb)(Object& object,void *arg),void *arg) noexcept;
 };
