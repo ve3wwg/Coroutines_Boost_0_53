@@ -182,6 +182,9 @@ main(int argc,char **argv) {
 	Scheduler scheduler;
 	int port = 2345, backlog = 50;
 
+	scheduler.add_timer(2,10);
+	scheduler.add_timer(10,1000);
+
 	auto add_listen_port = [&](const char *straddr) {
 		u_address addr;
 		int lfd = -1;
