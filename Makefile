@@ -13,7 +13,7 @@ LIBS	= $(BOOST)/lib
 
 all:	coroutine server
 
-OBJS	= scheduler.o server.o sockets.o httpbuf.o iobuf.o utils.o
+OBJS	= scheduler.o server.o sockets.o httpbuf.o iobuf.o utility.o
 
 coroutine.o: coroutine.hpp
 
