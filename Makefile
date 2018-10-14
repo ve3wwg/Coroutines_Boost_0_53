@@ -11,19 +11,9 @@ LIBS	= $(BOOST)/lib
 .cpp.o:
 	$(CXX) $(CXXFLAGS) $< -o $*.o
 
-all:	boost_check coroutine server
+all:	coroutine server
 
 OBJS	= scheduler.o server.o sockets.o httpbuf.o iobuf.o utils.o
-
-boost_check:
-	@if [ ! -d $(BOOST)/. ] ; then \
-		echo "export or supply BOOST=<boost_1.53.0_dir>" ; \
-		exit 1; \
-	fi
-	@if [ ! -f $(BOOST)/lib/libboost_context.so.1.53.0 ] ; then \
-		echo "Boost library libboost_context.so.1.53.0 (version 1.53.0) required." ; \
-		exit 1; \
-	fi
 
 coroutine.o: coroutine.hpp
 
@@ -40,4 +30,6 @@ clobber: clean
 	rm -f coroutine .errs.t core
 
 test:
-	wget 'http://127.0.0.1:2345/some/path?var=1&var=2' --save-headers --method=POST --body-data='Some body data..' -qO - </dev/null 2>&1
+#	wget --save-headers --method=POST --body-data='Some body data..' -qO - 'http://127.0.0.1:2345/some/path?var=1&var=2' </dev/null 2>&1
+	wget --save-headers --post-data='Some body data..' -qO - 'http://127.0.0.1:2345/some/path?var=1&var=2' </dev/null 2>&1
+
