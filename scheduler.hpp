@@ -9,11 +9,13 @@
 #include <stdint.h>
 #include <sys/epoll.h>
 #include <unordered_map>
+#include <vector>
 
 #include "coroutine.hpp"
 #include "events.hpp"
 #include "sockets.hpp"
 #include "httpbuf.hpp"
+#include "evtimer.hpp"
 
 class Scheduler;
 
@@ -23,11 +25,13 @@ class Scheduler;
 
 class Service : public Coroutine {
 	friend Scheduler;
+	friend EvTimer<Service>;
 
 	int		sock;			// Socket
 	Events		ev;			// Desired epoll(2) events
 	uint32_t	er_flags=0;		// Error flags received (EPOLLHUP etc.)
 	uint32_t	ev_flags=0;		// Event flags recevied (EPOLLIN|EPOLLOUT|error flags seen this time only)
+	EvNode		evnode;			// Timer event node
 
 	static int read_cb(int fd,void *buf,size_t bytes,void *arg) noexcept;
 	static int write_cb(int fd,const void *buf,size_t bytes,void *arg) noexcept;
@@ -56,6 +60,7 @@ public:	Service(fun_t func,int fd) : Coroutine(func), sock(fd) {}
 class Scheduler : public CoroutineMain {
 	int		efd = -1;		// From epoll_create1()
 
+	std::vector<EvTimer<Service>> timers;
 	std::unordered_map<int/*fd*/,CoroutineBase*> fdset;
 
 public:	Scheduler();
@@ -69,6 +74,8 @@ public:	Scheduler();
 	bool add(int fd,uint32_t events,Service *co);
 	bool del(int fd);
 	bool chg(int fd,Events& ev,CoroutineBase *co);
+
+	size_t add_timer(unsigned secs_max,unsigned granularity_ms) noexcept;
 };
 
 #endif // SCHEDULER_HPP
