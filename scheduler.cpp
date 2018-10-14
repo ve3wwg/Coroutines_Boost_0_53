@@ -200,4 +200,21 @@ Service::write_cb(int fd,const void *buf,size_t bytes,void *arg) noexcept {
 	return svc.write_sock(fd,buf,bytes);
 };
 
+//////////////////////////////////////////////////////////////////////
+// Add a timer to the Scheduler:
+//
+// ARGUMENTS:
+//	secs_max	Maximum length of timeout in seconds
+//	granularity_ms	Granularity of the timer in milliseconds
+// RETURNS:
+//	Timer Index	Returns zero based index for added timer
+//////////////////////////////////////////////////////////////////////
+
+size_t
+Scheduler::add_timer(unsigned secs_max,unsigned granularity_ms) noexcept {
+
+	timers.emplace_back(secs_max,granularity_ms);
+	return timers.size() - 1;
+}
+
 // End scheduler.cpp
