@@ -10,6 +10,7 @@
 #include <sys/epoll.h>
 #include <unordered_map>
 #include <vector>
+#include <exception>
 
 #include "coroutine.hpp"
 #include "events.hpp"
@@ -31,24 +32,37 @@ class Service : public Coroutine {
 	Events		ev;			// Desired epoll(2) events
 	uint32_t	er_flags=0;		// Error flags received (EPOLLHUP etc.)
 	uint32_t	ev_flags=0;		// Event flags recevied (EPOLLIN|EPOLLOUT|error flags seen this time only)
-	EvNode		evnode;			// Timer event node
+	EvNode		tmrnode;		// Timer event node (Scheduler timer)
+	EvNode		evnode;			// Event processing list (Scheduler)
+	size_t		timerx=~size_t(0);	// Index of active timer (Scheduler::no_timer)
 
-	static int read_cb(int fd,void *buf,size_t bytes,void *arg) noexcept;
-	static int write_cb(int fd,const void *buf,size_t bytes,void *arg) noexcept;
+	static int read_cb(int fd,void *buf,size_t bytes,void *arg);
+	static int write_cb(int fd,const void *buf,size_t bytes,void *arg);
 
-public:	Service(fun_t func,int fd) : Coroutine(func), sock(fd) {}
+public:	struct timeout_exception : public std::exception {
+		size_t	timerx;			// Index of expired timer
+
+		timeout_exception(size_t x) : timerx(x) {};
+	};
+
+public:	Service(fun_t func,int fd) : Coroutine(func), sock(fd), tmrnode(), evnode() {}
+//	~Service() { tmrnode.unlink(); evnode.unlink(); }
+	~Service() { }
+
 	int socket() noexcept 			{ return sock; }
 	Events &events() noexcept		{ return ev; }
 	uint32_t err_flags() noexcept		{ return er_flags; }
 	uint32_t evt_flags() noexcept		{ return ev_flags; }
 
-	int read_header(int fd,HttpBuf& buf) noexcept;
-	int write(int fd,HttpBuf& buf) noexcept;
+	int read_header(int fd,HttpBuf& buf);
+	int write(int fd,HttpBuf& buf);
 
-	int read_body(int fd,HttpBuf& buf,size_t content_length) noexcept;
-	int read_sock(int fd,void *buf,size_t bytes) noexcept;
-	int write_sock(int fd,const void *buf,size_t bytes) noexcept;
+	int read_body(int fd,HttpBuf& buf,size_t content_length);
+	int read_sock(int fd,void *buf,size_t bytes);
+	int write_sock(int fd,const void *buf,size_t bytes);
 
+	CoroutineBase *yield();
+	void timeout(size_t timerx)		{ this->timerx = timerx; }
 	void terminate() noexcept		{ yield_with(nullptr); }
 };
 
@@ -76,6 +90,9 @@ public:	Scheduler();
 	bool chg(int fd,Events& ev,CoroutineBase *co);
 
 	size_t add_timer(unsigned secs_max,unsigned granularity_ms) noexcept;
+	void set_timer(unsigned timerx,Service& svc,long ms);
+
+	static const size_t no_timer = ~(size_t(0));
 };
 
 #endif // SCHEDULER_HPP
