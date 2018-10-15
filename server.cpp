@@ -84,8 +84,13 @@ sock_func(CoroutineBase *co) {
 		// Read http headers:
 		//////////////////////////////////////////////////////
 
-		if ( svc.read_header(sock,hbuf) != 1 )
-			exit_coroutine();		// Fail!
+		try	{
+			if ( svc.read_header(sock,hbuf) != 1 )
+				exit_coroutine();		// Fail!
+		} catch ( Service::timeout_exception& e ) {
+			printf("*** TIMEOUT ON TIMER %d ***\n",int(e.timerx));
+			exit_coroutine();
+		}
 
 		content_length = hbuf.parse_headers(reqtype,path,httpvers,headers,4096);
 
@@ -169,8 +174,9 @@ listen_func(CoroutineBase *co) {
 		if ( fd < 0 ) {
 			listen_co.yield();	// Yield to Epoll
 		} else	{
-			scheduler.add(fd,EPOLLIN|EPOLLHUP|EPOLLRDHUP|EPOLLERR,
-				new Service(sock_func,fd));
+			Service *svc = new Service(sock_func,fd);
+			scheduler.add(fd,EPOLLIN|EPOLLHUP|EPOLLRDHUP|EPOLLERR,svc);
+scheduler.set_timer(0u,*svc,1);
 		}
 	}
 
@@ -183,7 +189,8 @@ main(int argc,char **argv) {
 	int port = 2345, backlog = 50;
 
 	scheduler.add_timer(2,10);
-	scheduler.add_timer(10,1000);
+//	scheduler.add_timer(10,1000);
+#warning Need copy constructor for timers
 
 	auto add_listen_port = [&](const char *straddr) {
 		u_address addr;
@@ -193,7 +200,9 @@ main(int argc,char **argv) {
 		Sockets::import_ip(straddr,addr);
 		lfd = Sockets::listen(addr,port,backlog);
 		assert(lfd >= 0);
-		bf = scheduler.add(lfd,EPOLLIN,new Service(listen_func,lfd));
+
+		Service *svc = new Service(listen_func,lfd);
+		bf = scheduler.add(lfd,EPOLLIN,svc);
 		assert(bf);
 	};
 
