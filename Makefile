@@ -27,7 +27,7 @@ clean:
 	rm -f *.o
 
 clobber: clean
-	rm -f coroutine .errs.t core
+	rm -f coroutine .errs.t core core.*
 
 test:
 #	wget --save-headers --method=POST --body-data='Some body data..' -qO - 'http://127.0.0.1:2345/some/path?var=1&var=2' </dev/null 2>&1
