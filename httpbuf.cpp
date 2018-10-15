@@ -110,7 +110,7 @@ HttpBuf::have_end(size_t *pepos,size_t *pelen) noexcept {
 //////////////////////////////////////////////////////////////////////
 
 int
-HttpBuf::read_header(int fd,readcb_t readcb,void *arg) noexcept {
+HttpBuf::read_header(int fd,readcb_t readcb,void *arg) {
 	char buf[1024];
 	size_t epos=0, elen=0;
 	int rc;
@@ -137,7 +137,7 @@ HttpBuf::read_header(int fd,readcb_t readcb,void *arg) noexcept {
 //////////////////////////////////////////////////////////////////////
 
 int
-HttpBuf::read_body(int fd,readcb_t readcb,void *arg,size_t content_length) noexcept {
+HttpBuf::read_body(int fd,readcb_t readcb,void *arg,size_t content_length) {
 	size_t bpos = hdr_epos + hdr_elen;
 	char buf[2048];
 	int rc;
@@ -266,7 +266,7 @@ HttpBuf::body() noexcept {
 //////////////////////////////////////////////////////////////////////
 
 int
-HttpBuf::write(int fd,writecb_t writecb,void *arg) noexcept {
+HttpBuf::write(int fd,writecb_t writecb,void *arg) {
 	char buf[2048];
 	size_t n, gpos = tellg(), ppos = tellp();
 	int rc;
