@@ -75,37 +75,77 @@ Scheduler::chg(int fd,Events& ev,CoroutineBase *co) {
 void
 Scheduler::run() {
 	static const int max_events = 8*1024;
+	typedef boost::intrusive::member_hook<Service,EvNode,&Service::evnode> EvMemberHook;
+	typedef boost::intrusive::list<Service,EvMemberHook,non_constant_time_size,auto_unlink> EvObjList;
 	epoll_event events[max_events];
+	EvObjList service_list;
+	struct s_timer_parms {
+		size_t		timerx;		// Timer index
+		Scheduler	*pscheduler;	// Scheduler pointer
+	} timer_parms;
+	timespec now;
 	int rc, n_events;
+
+	timer_parms.pscheduler = this;
 
 	for (;;) {
 		rc = epoll_wait(efd,&events[0],max_events,10);
 		if ( rc > 0 ) {
 			n_events = rc;
 
+			service_list.clear();
 			for ( int x=0; x<n_events; ++x ) {
 				Service& svc = *(Service*)events[x].data.ptr;
 
 				svc.ev_flags = events[x].events;
 				svc.er_flags |= svc.ev_flags & (EPOLLERR|EPOLLHUP|EPOLLRDHUP);
 
-				if ( !yield(svc) )			// Invoke service coroutine
+				service_list.push_back(svc);
+			}
+
+			auto callback = [](Service& service,void *arg) {
+				s_timer_parms& tparms = *(s_timer_parms*)arg;
+				Scheduler& sched = *tparms.pscheduler;
+
+				service.timeout(tparms.timerx);
+				if ( !sched.yield(service) ) {
+					delete &service;
+				} else	{
+					if ( service.ev.sync_ev() )
+						sched.chg(service.socket(),service.ev,&service);
+				}
+			};
+
+			usleep(100);
+			::timeofday(now);
+
+			for ( timer_parms.timerx=0; timer_parms.timerx < timers.size(); ++timer_parms.timerx )
+				timers[timer_parms.timerx].expire(now,callback,&timer_parms);
+
+			while ( !service_list.empty() ) {
+				Service& svc = service_list.front();
+
+				service_list.pop_front();
+				if ( !yield(svc) ) {			// Invoke service coroutine
 					delete &svc;			// Coroutine has terminated
-				else	{
+				} else	{
 					svc.ev.disable_ev(svc.er_flags);	// No longer require notification of seen errors
 					if ( svc.ev.sync_ev() )			// Changes to desired event notifications?
 						chg(svc.socket(),svc.ev,&svc);	// Yes, make them so
 				}
 			}
+
 		} else if ( rc < 0 ) {
 			printf("Scheduler: %s: epoll_wait()\n",
 				strerror(errno));
 		}
 	}
+
+	service_list.clear();
 }
 
 int
-Service::read_sock(int fd,void *buf,size_t bytes) noexcept {
+Service::read_sock(int fd,void *buf,size_t bytes) {
 	int rc;
 
 	for (;;) {
@@ -128,7 +168,7 @@ Service::read_sock(int fd,void *buf,size_t bytes) noexcept {
 }
 
 int
-Service::write_sock(int fd,const void *buf,size_t bytes) noexcept {
+Service::write_sock(int fd,const void *buf,size_t bytes) {
 	int rc;
 
 	for (;;) {
@@ -160,7 +200,7 @@ Service::write_sock(int fd,const void *buf,size_t bytes) noexcept {
 //////////////////////////////////////////////////////////////////////
 
 int
-Service::read_header(int fd,HttpBuf& buf) noexcept {
+Service::read_header(int fd,HttpBuf& buf) {
 	return buf.read_header(sock,read_cb,this);
 }
 
@@ -173,12 +213,12 @@ Service::read_header(int fd,HttpBuf& buf) noexcept {
 //////////////////////////////////////////////////////////////////////
 
 int
-Service::read_body(int fd,HttpBuf& buf,size_t content_length) noexcept {
+Service::read_body(int fd,HttpBuf& buf,size_t content_length) {
 	return buf.read_body(sock,read_cb,this,content_length);
 }
 
 int
-Service::write(int fd,HttpBuf& buf) noexcept {
+Service::write(int fd,HttpBuf& buf) {
 	return buf.write(sock,write_cb,this);
 }
 
@@ -187,14 +227,14 @@ Service::write(int fd,HttpBuf& buf) noexcept {
 //////////////////////////////////////////////////////////////////////
 
 int
-Service::read_cb(int fd,void *buf,size_t bytes,void *arg) noexcept {
+Service::read_cb(int fd,void *buf,size_t bytes,void *arg) {
 	Service& svc = *(Service*)arg;
 
 	return svc.read_sock(fd,buf,bytes);
 };
 
 int
-Service::write_cb(int fd,const void *buf,size_t bytes,void *arg) noexcept {
+Service::write_cb(int fd,const void *buf,size_t bytes,void *arg) {
 	Service& svc = *(Service*)arg;
 
 	return svc.write_sock(fd,buf,bytes);
@@ -215,6 +255,27 @@ Scheduler::add_timer(unsigned secs_max,unsigned granularity_ms) noexcept {
 
 	timers.emplace_back(secs_max,granularity_ms);
 	return timers.size() - 1;
+}
+
+void
+Scheduler::set_timer(unsigned timerx,Service& svc,long ms) {
+
+	assert(timerx < unsigned(timers.size()));
+	EvTimer<Service>& timer = timers[timerx];
+
+	timer.insert(ms,svc);
+}
+
+CoroutineBase *
+Service::yield() {
+	
+	CoroutineBase::yield(*caller);
+	if ( this->timerx != Scheduler::no_timer ) {
+		timeout_exception e(this->timerx);
+		this->timerx = Scheduler::no_timer;
+		throw e;
+	}
+	return caller;
 }
 
 // End scheduler.cpp
