@@ -12,12 +12,14 @@
 #include "circarray.hpp"
 #include "utility.hpp"
 
-typedef boost::intrusive::list_member_hook<> EvNode;	// Node to be included in Object
+typedef boost::intrusive::link_mode<boost::intrusive::auto_unlink> auto_unlink;
+typedef boost::intrusive::constant_time_size<false> non_constant_time_size;
+typedef boost::intrusive::list_member_hook<auto_unlink> EvNode;	// Node to be included in Object
 
 template<typename Object>
 class EvTimer {
-	typedef boost::intrusive::member_hook<Object,EvNode,&Object::evnode> MemberHook;
-	typedef boost::intrusive::list<Object,MemberHook> ObjList;
+	typedef boost::intrusive::member_hook<Object,EvNode,&Object::tmrnode> MemberHook;
+	typedef boost::intrusive::list<Object,MemberHook,non_constant_time_size,auto_unlink> ObjList;
 
 	timespec		epoch;			// carray[0] begins at this time (needs to be timespec)
 	timespec		incr;			// Time increment as timespec
@@ -28,6 +30,7 @@ class EvTimer {
 	void visit(unsigned x,void (*cb)(Object& object,void *arg),void *arg) noexcept;		// Needs to be private..
 
 public:	EvTimer(unsigned secs_max,unsigned granularity_ms) noexcept;
+	~EvTimer() noexcept;
 	EvTimer& insert(long ms,Object& object) noexcept;
 	EvTimer& expire(const timespec& now,void (*cb)(Object& object,void *arg),void *arg) noexcept;
 };
@@ -40,6 +43,16 @@ EvTimer<Object>::EvTimer(unsigned secs_max,unsigned granularity_ms) noexcept : c
 	incr.tv_nsec = granularity_ms * 1000000L;
 	incr_ms = incr.tv_sec * 1000L + incr.tv_nsec / 1000000L;
 	timeofday(epoch);
+}
+
+template<typename Object>
+EvTimer<Object>::~EvTimer() noexcept {
+
+	for ( size_t x=0; x<carray.size(); ++x ) {
+		ObjList& listhead = carray[x];
+
+		listhead.clear();
+	}
 }
 
 template<typename Object>
@@ -68,6 +81,7 @@ EvTimer<Object>::expire(const timespec& now,void (*cb)(Object& object,void *arg)
 
 		while ( !list.empty() ) {
 			Object& object = list.front();
+
 			list.pop_front();
 			cb(object,arg);
 		}
