@@ -32,10 +32,13 @@ class Service : public Coroutine {
 	Events		ev;			// Desired epoll(2) events
 	uint32_t	er_flags=0;		// Error flags received (EPOLLHUP etc.)
 	uint32_t	ev_flags=0;		// Event flags recevied (EPOLLIN|EPOLLOUT|error flags seen this time only)
-	EvNode		tmrnode;		// Timer event node (Scheduler timer)
-	EvNode		evnode;			// Event processing list (Scheduler)
 	size_t		timerx=~size_t(0);	// Index of active timer (Scheduler::no_timer)
 
+public:
+	EvNode		tmrnode;		// Timer event node (Scheduler timer)
+	EvNode		evnode;			// Event processing list (Scheduler)
+
+private:
 	static int read_cb(int fd,void *buf,size_t bytes,void *arg);
 	static int write_cb(int fd,const void *buf,size_t bytes,void *arg);
 
