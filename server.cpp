@@ -84,7 +84,7 @@ sock_func(CoroutineBase *co) {
 		try	{
 			if ( svc.read_header(sock,hbuf) != 1 )
 				exit_coroutine();		// Fail!
-		} catch ( Service::timeout_exception& e ) {
+		} catch ( Service::Timeout& e ) {
 			printf("*** TIMEOUT ON TIMER %d HEADERS ***\n",int(e.timerx));
 			exit_coroutine();
 		}
@@ -104,7 +104,7 @@ sock_func(CoroutineBase *co) {
 		try	{
 			svc.read_body(sock,hbuf,content_length);
 			body.assign(hbuf.body());
-		} catch ( Service::timeout_exception& e ) {
+		} catch ( Service::Timeout& e ) {
 			printf("*** TIMEOUT ON TIMER %d BODY ***\n",int(e.timerx));
 			exit_coroutine();
 		}
@@ -144,7 +144,7 @@ sock_func(CoroutineBase *co) {
 		try	{
 			svc.write(sock,rhdr);
 			svc.write(sock,rbody);
-		} catch ( Service::timeout_exception& e ) {
+		} catch ( Service::Timeout& e ) {
 			printf("*** TIMEOUT ON TIMER %d OUTPUT ***\n",int(e.timerx));
 			exit_coroutine();
 		}

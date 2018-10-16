@@ -39,14 +39,13 @@ class Service : public Coroutine {
 	static int read_cb(int fd,void *buf,size_t bytes,void *arg);
 	static int write_cb(int fd,const void *buf,size_t bytes,void *arg);
 
-public:	struct timeout_exception : public std::exception {
+public:	struct Timeout : public std::exception {
 		size_t	timerx;			// Index of expired timer
 
-		timeout_exception(size_t x) : timerx(x) {};
+		Timeout(size_t x) : timerx(x) {};
 	};
 
 public:	Service(fun_t func,int fd) : Coroutine(func), sock(fd), tmrnode(), evnode() {}
-//	~Service() { tmrnode.unlink(); evnode.unlink(); }
 	~Service() { }
 
 	int socket() noexcept 			{ return sock; }
