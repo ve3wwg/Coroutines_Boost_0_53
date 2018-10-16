@@ -30,6 +30,7 @@ class EvTimer {
 	void visit(unsigned x,void (*cb)(Object& object,void *arg),void *arg) noexcept;		// Needs to be private..
 
 public:	EvTimer(unsigned secs_max,unsigned granularity_ms) noexcept;
+	EvTimer(const EvTimer& other) noexcept;
 	~EvTimer() noexcept;
 	EvTimer& insert(long ms,Object& object) noexcept;
 	EvTimer& expire(const timespec& now,void (*cb)(Object& object,void *arg),void *arg) noexcept;
@@ -43,6 +44,15 @@ EvTimer<Object>::EvTimer(unsigned secs_max,unsigned granularity_ms) noexcept : c
 	incr.tv_nsec = granularity_ms * 1000000L;
 	incr_ms = incr.tv_sec * 1000L + incr.tv_nsec / 1000000L;
 	timeofday(epoch);
+}
+
+template<typename Object>
+EvTimer<Object>::EvTimer(const EvTimer<Object>& other) noexcept : carray(other.carray.size()) {
+
+	incr = other.incr;
+	incr_ms = other.incr_ms;
+	epoch = other.epoch;
+
 }
 
 template<typename Object>
