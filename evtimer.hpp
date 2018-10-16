@@ -78,6 +78,8 @@ EvTimer<Object>::insert(long time_ms,Object& object) noexcept {
 
 	if ( x > long(carray.size()) )
 		x = long(carray.size()) - 1;
+
+	object.tmrnode.unlink();
 	carray[x].push_back(object);
 	return *this;
 }
