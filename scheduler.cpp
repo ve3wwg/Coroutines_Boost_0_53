@@ -16,6 +16,7 @@
 
 Scheduler::Scheduler() {
 	efd = epoll_create1(EPOLL_CLOEXEC);
+	timers.reserve(8);
 	assert(efd > 0);
 }
 
@@ -116,7 +117,6 @@ Scheduler::run() {
 				}
 			};
 
-			usleep(100);
 			::timeofday(now);
 
 			for ( timer_parms.timerx=0; timer_parms.timerx < timers.size(); ++timer_parms.timerx )
