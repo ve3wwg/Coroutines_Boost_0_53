@@ -271,7 +271,7 @@ Service::yield() {
 	
 	CoroutineBase::yield(*caller);
 	if ( this->timerx != Scheduler::no_timer ) {
-		timeout_exception e(this->timerx);
+		Timeout e(this->timerx);
 		this->timerx = Scheduler::no_timer;
 		throw e;
 	}
