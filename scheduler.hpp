@@ -51,6 +51,9 @@ public:	struct Timeout : public std::exception {
 public:	Service(fun_t func,int fd) : Coroutine(func), sock(fd), tmrnode(), evnode() {}
 	~Service() { }
 
+	static Service& service(CoroutineBase *co);
+	inline Scheduler& scheduler();
+
 	int socket() noexcept 			{ return sock; }
 	Events &events() noexcept		{ return ev; }
 	uint32_t err_flags() noexcept		{ return er_flags; }
@@ -96,6 +99,11 @@ public:	Scheduler();
 
 	static const size_t no_timer = ~(size_t(0));
 };
+
+Scheduler&
+Service::scheduler() {
+	return *dynamic_cast<Scheduler*>(Coroutine::get_caller());
+}
 
 #endif // SCHEDULER_HPP
 

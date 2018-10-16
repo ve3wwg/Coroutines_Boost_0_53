@@ -278,4 +278,9 @@ Service::yield() {
 	return caller;
 }
 
+Service&
+Service::service(CoroutineBase *co) {
+	return *dynamic_cast<Service*>(co);		// This coroutine that is scheduled
+}
+
 // End scheduler.cpp

@@ -22,11 +22,10 @@ static const char html_endl[] = "\r\n";
 
 static CoroutineBase *
 sock_func(CoroutineBase *co) {
-	Service& svc = *dynamic_cast<Service*>(co);		// This coroutine that is scheduled
-	Scheduler& scheduler = *dynamic_cast<Scheduler*>(svc.get_caller()); // Invoking scheduler
-	const int sock = svc.socket();			// Socket being processed
+	Service& svc = Service::service(co);			// The invoked Service
+	Scheduler& scheduler = svc.scheduler();			// Invoking scheduler
+	const int sock = svc.socket();				// Socket being processed
 	Events& ev = svc.events();				// EPoll events control
-	// Service variables:
 	std::string reqtype, path, httpvers;
 	HttpBuf hbuf;
 	HttpBuf rhdr, rbody;
@@ -142,6 +141,7 @@ sock_func(CoroutineBase *co) {
 		ev.enable_ev(EPOLLOUT);
 
 		try	{
+			scheduler.set_timer(0,svc,30);
 			svc.write(sock,rhdr);
 			svc.write(sock,rbody);
 		} catch ( Service::Timeout& e ) {
