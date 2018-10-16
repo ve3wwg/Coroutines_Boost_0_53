@@ -53,7 +53,6 @@ sock_func(CoroutineBase *co) {
 	//////////////////////////////////////////////////////////////
 
 	auto exit_coroutine = [&]() {
-		printf("Exit coroutine sock=%d\n",sock);
 		scheduler.del(sock);			// Remove our socket from Epoll
 		close(sock);				// Close the socket
 		svc.terminate();			// Delete this coroutine
@@ -78,8 +77,6 @@ sock_func(CoroutineBase *co) {
 		content_length = 0;
 		keep_alivef = false;
 
-		printf("Expecting request from sock=%d\n",sock);
-
 		//////////////////////////////////////////////////////
 		// Read http headers:
 		//////////////////////////////////////////////////////
@@ -88,7 +85,7 @@ sock_func(CoroutineBase *co) {
 			if ( svc.read_header(sock,hbuf) != 1 )
 				exit_coroutine();		// Fail!
 		} catch ( Service::timeout_exception& e ) {
-			printf("*** TIMEOUT ON TIMER %d ***\n",int(e.timerx));
+			printf("*** TIMEOUT ON TIMER %d HEADERS ***\n",int(e.timerx));
 			exit_coroutine();
 		}
 
@@ -104,8 +101,13 @@ sock_func(CoroutineBase *co) {
 				keep_alivef = !strcasecmp(keep_alive.c_str(),"Keep-Alive");
 		}
 
-		svc.read_body(sock,hbuf,content_length);
-		body.assign(hbuf.body());
+		try	{
+			svc.read_body(sock,hbuf,content_length);
+			body.assign(hbuf.body());
+		} catch ( Service::timeout_exception& e ) {
+			printf("*** TIMEOUT ON TIMER %d BODY ***\n",int(e.timerx));
+			exit_coroutine();
+		}
 
 		//////////////////////////////////////////////////////
 		// Form Reponse:
@@ -129,7 +131,8 @@ sock_func(CoroutineBase *co) {
 			rbody	<< "Hdr: " << hdr << ": " << val << html_endl;
 		}
 
-		rhdr	<< "Content-Length: " << rbody.tellp() << html_endl
+		rhdr	<< "Socket fd = " << sock << html_endl
+			<< "Content-Length: " << rbody.tellp() << html_endl
 			<< "Extracted body was " << body.size() << " bytes in length" << html_endl
 			<< "Body was:" << html_endl
 			<< body << html_endl
@@ -138,8 +141,13 @@ sock_func(CoroutineBase *co) {
 		ev.disable_ev(EPOLLIN);
 		ev.enable_ev(EPOLLOUT);
 
-		svc.write(sock,rhdr);
-		svc.write(sock,rbody);
+		try	{
+			svc.write(sock,rhdr);
+			svc.write(sock,rbody);
+		} catch ( Service::timeout_exception& e ) {
+			printf("*** TIMEOUT ON TIMER %d OUTPUT ***\n",int(e.timerx));
+			exit_coroutine();
+		}
 
 		ev.disable_ev(EPOLLOUT);
 		ev.enable_ev(EPOLLIN);
@@ -189,8 +197,7 @@ main(int argc,char **argv) {
 	int port = 2345, backlog = 50;
 
 	scheduler.add_timer(2,10);
-//	scheduler.add_timer(10,1000);
-#warning Need copy constructor for timers
+	scheduler.add_timer(10,1000);
 
 	auto add_listen_port = [&](const char *straddr) {
 		u_address addr;
