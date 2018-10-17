@@ -8,8 +8,12 @@
 
 #include <string>
 #include <unordered_map>
+#include <functional>
 
 #include "iobuf.hpp"
+#include "utility.hpp"
+
+typedef std::unordered_multimap<std::string,std::string,std::hash<std::string>,s_casecmp> headermap_t;
 
 class HttpBuf : public IOBuf {
 	typedef int (*readcb_t)(int fd,void *buf,size_t bytes,void *arg);
@@ -34,7 +38,7 @@ public:	HttpBuf() {};
 	  std::string& reqtype,			// Out: GET/POST
 	  std::string& path,			// Out: Path component
 	  std::string& httpvers,		// Out: HTTP/x.x
-	  std::unordered_multimap<std::string,std::string>& headers, // Out: Parsed headers
+	  headermap_t& headers,			// Out: Parsed headers
 	  size_t maxhdr=2048			// In:  Max size of headers buffer for parsing
 	) noexcept;
 };
