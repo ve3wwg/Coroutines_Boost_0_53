@@ -63,6 +63,7 @@ public:	Service(fun_t func,int fd) : Coroutine(func), sock(fd), tmrnode(), evnod
 	int write(int fd,HttpBuf& buf);
 
 	int read_body(int fd,HttpBuf& buf,size_t content_length);
+	int read_chunked(int fd,HttpBuf& buf,std::stringstream& unchunked);
 	int read_sock(int fd,void *buf,size_t bytes);
 	int write_sock(int fd,const void *buf,size_t bytes);
 

@@ -214,12 +214,12 @@ Service::read_header(int fd,HttpBuf& buf) {
 
 int
 Service::read_body(int fd,HttpBuf& buf,size_t content_length) {
-	return buf.read_body(sock,read_cb,this,content_length);
+	return buf.read_body(fd,read_cb,this,content_length);
 }
 
 int
 Service::write(int fd,HttpBuf& buf) {
-	return buf.write(sock,write_cb,this);
+	return buf.write(fd,write_cb,this);
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -281,6 +281,11 @@ Service::yield() {
 Service&
 Service::service(CoroutineBase *co) {
 	return *dynamic_cast<Service*>(co);		// This coroutine that is scheduled
+}
+
+int
+Service::read_chunked(int fd,HttpBuf& buf,std::stringstream& unchunked) {
+	return buf.read_chunked(fd,read_cb,this,unchunked);
 }
 
 // End scheduler.cpp

@@ -32,6 +32,7 @@ public:	HttpBuf() {};
 	bool have_end(size_t *pepos,size_t *pelen) noexcept; 				// True if we have read end of header
 	int read_header(int fd,readcb_t readcb,void *arg); 				// Read up to end of header
 	int read_body(int fd,readcb_t readcb,void *arg,size_t content_length);		// Ready full body
+	int read_chunked(int fd,readcb_t readcb,void *arg,std::stringstream& unchunked); // Read chunked body/response
 	int write(int fd,writecb_t,void *arg);						// Write buffer to fd
 	std::string body() noexcept;		// Extract body
 	size_t parse_headers(

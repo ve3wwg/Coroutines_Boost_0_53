@@ -158,6 +158,121 @@ HttpBuf::read_body(int fd,readcb_t readcb,void *arg,size_t content_length) {
 }
 
 //////////////////////////////////////////////////////////////////////
+// Read a chunked body, starting with text arg prime.
+//////////////////////////////////////////////////////////////////////
+
+int
+HttpBuf::read_chunked(int fd,readcb_t readcb,void *arg,std::stringstream& unchunked) {
+	size_t bpos = hdr_epos + hdr_elen;
+	char buf[2048], ch;
+	size_t chunk_size;
+	int rc;
+
+	assert(size_t(tellp()) >= bpos);
+
+	struct IO_Exception : public std::exception {
+		int	rc;
+		IO_Exception(int rc) : rc(rc) {};
+	};
+
+	auto get_char = [&](char& ch) {
+		while ( tellg() >= tellp() ) {
+			rc = readcb(fd,buf,sizeof buf,arg);
+			if ( rc <= 0 )
+				throw IO_Exception(rc);
+			std::stringstream::write(buf,rc);
+		}
+		get(ch);
+	};
+
+	auto copy_unch = [&](size_t n) {
+		size_t sn;
+		while ( n > 0u ) {
+			sn = readsome(buf,n < sizeof buf ? n : sizeof buf);
+			unchunked.write(buf,sn);
+			n -= sn;
+		}
+	};
+
+	auto read_dat = [&](size_t n) {
+		while ( n > 0u ) {
+			rc = readcb(fd,buf,n < sizeof buf ? n : sizeof buf,arg);
+			if ( rc <= 0 )
+				throw IO_Exception(rc);
+			std::stringstream::write(buf,rc);
+			n -= rc;
+		}
+	};
+
+	auto got_eol = [&]() -> bool {
+		if ( ch == '\r' ) {
+			get_char(ch);		// Try to eat LF
+			if ( ch != '\n' )
+				unget();	// Not LF, so give it back
+			return true;
+		}
+		if ( ch == '\n' )		// Got LF instead, treat as CR LF
+			return true;
+		return false;			// ch is not at EOL
+	};
+
+	try	{
+		for (;;) {
+			//////////////////////////////////////////////
+			// Read in the chunk's size
+			//////////////////////////////////////////////
+			chunk_size = 0;
+			for (;;) {
+				get_char(ch);
+				if ( ch >= '0' && ch <= '9' )
+					chunk_size = chunk_size * 10u + (ch & 0x0F);
+				else if ( (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F') )
+					chunk_size = chunk_size * 10u + (ch & 0x0F) + 9;
+				else if ( got_eol() )
+					break;
+			}
+			if ( chunk_size == 0u )
+				break;			// End of chunks
+
+			size_t have = size_t(tellp()) - size_t(tellg());
+
+			if ( have > 0u ) {		// Copy pre-read chunk data, if any
+				if ( have > chunk_size )
+					have = chunk_size;
+				copy_unch(have);
+				chunk_size -= have;
+			}
+
+			if ( chunk_size > 0u ) {	// Else go read more to satisfy
+				read_dat(chunk_size);
+				copy_unch(chunk_size);
+			}
+		} // Reading chunks
+
+		//////////////////////////////////////////////////////
+		// Skip over trailer-part
+		//////////////////////////////////////////////////////
+
+		for (;;) {
+			get_char(ch);		
+			if ( got_eol() )
+				break;
+			// Skip trailer-part
+			for (;;) {
+				get_char(ch);
+				if ( got_eol() )
+					break;
+			}
+		}
+
+	} catch ( IO_Exception& e ) {
+		return e.rc;				// I/O error, or EOF
+	}
+
+	return int(unchunked.tellp());
+}
+
+//////////////////////////////////////////////////////////////////////
 // Reset stream to initial state
 //////////////////////////////////////////////////////////////////////
 
