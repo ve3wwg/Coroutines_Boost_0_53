@@ -30,7 +30,7 @@ sock_func(CoroutineBase *co) {
 	HttpBuf hbuf;
 	HttpBuf rhdr, rbody;
 	std::string body;
-	std::unordered_multimap<std::string,std::string> headers;
+	headermap_t headers;
 	std::size_t content_length = 0;
 	bool keep_alivef = false;				// True when we have Connection: Keep-Alive
 

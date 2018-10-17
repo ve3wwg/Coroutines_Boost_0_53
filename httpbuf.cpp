@@ -178,7 +178,7 @@ HttpBuf::parse_headers(
   std::string& reqtype,			// Out: GET/POST
   std::string& path,			// Out: Path component
   std::string& httpvers,		// Out: HTTP/x.x
-  std::unordered_multimap<std::string,std::string>& headers, // Out: Parsed headers
+  headermap_t& headers, 		// Out: Parsed headers
   size_t maxhdr				// In:  Max size of headers buffer for parsing
 ) noexcept {
 	char *buf = new char[maxhdr];

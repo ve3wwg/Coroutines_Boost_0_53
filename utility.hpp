@@ -7,6 +7,8 @@
 #define UTILITY_HPP
 
 #include <time.h>
+#include <string.h>
+#include <string>
 
 void ucase_buffer(char *buf);
 timespec& timeofday(timespec &tod);
@@ -75,6 +77,12 @@ inline
 long millisecs(const timespec &tspec) {
 	return tspec.tv_sec * 1000L + tspec.tv_nsec / 1000000L;
 }
+
+struct s_casecmp {
+	inline bool operator()(const std::string& left,const std::string& right) const noexcept {
+		return !strcasecmp(left.c_str(),right.c_str());
+	}
+};
 
 #endif // UTILITY_HPP
 
