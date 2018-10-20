@@ -38,3 +38,8 @@ chunked:
 		--header='Transfer-Encoding: chunked' \
 		'http://127.0.0.1:2345/some/path?var=1&var=2' </dev/null 2>&1
 
+xchunked:
+	wget --save-headers --post-data=$$'4\r\nWiki\r\n5\r\npedia\r\nE\r\n in\r\n\r\nchunks.\r\n0\r\nX-Exten1: One\r\nX=Extem2: two\r\n\r\n' -qO - \
+		--header='Transfer-Encoding: chunked' \
+		'http://127.0.0.1:2345/some/path?var=1&var=2' </dev/null 2>&1
+
