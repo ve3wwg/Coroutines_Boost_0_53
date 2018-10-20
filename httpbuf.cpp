@@ -216,6 +216,11 @@ HttpBuf::read_chunked(int fd,readcb_t readcb,void *arg,std::stringstream& unchun
 		return false;			// ch is not at EOL
 	};
 
+	auto eat_eol = [&]() -> bool {
+		get_char(ch);
+		return got_eol();
+	};
+
 	try	{
 		for (;;) {
 			//////////////////////////////////////////////
@@ -233,7 +238,6 @@ HttpBuf::read_chunked(int fd,readcb_t readcb,void *arg,std::stringstream& unchun
 			}
 			if ( chunk_size == 0u )
 				break;			// End of chunks
-
 			size_t have = size_t(tellp()) - size_t(tellg());
 
 			if ( have > 0u ) {		// Copy pre-read chunk data, if any
@@ -247,6 +251,7 @@ HttpBuf::read_chunked(int fd,readcb_t readcb,void *arg,std::stringstream& unchun
 				read_dat(chunk_size);
 				copy_unch(chunk_size);
 			}
+			eat_eol();
 		} // Reading chunks
 
 		//////////////////////////////////////////////////////
@@ -401,4 +406,3 @@ HttpBuf::write(int fd,writecb_t writecb,void *arg) {
 }
 
 // End httpbuf.cpp
-
