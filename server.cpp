@@ -22,6 +22,7 @@ static const char html_endl[] = "\r\n";
 
 static CoroutineBase *
 sock_func(CoroutineBase *co) {
+	static const size_t max_hdrlen = 4096;			// Max length of a header line
 	Service& svc = Service::service(co);			// The invoked Service
 	Scheduler& scheduler = svc.scheduler();			// Invoking scheduler
 	const int sock = svc.socket();				// Socket being processed
@@ -41,8 +42,10 @@ sock_func(CoroutineBase *co) {
 
 	auto get_header_str = [&headers](const char *what,std::string& v) -> bool {
 		auto it = headers.find(what);
-		if ( it == headers.end() )
+		if ( it == headers.end() ) {
+printf("Header '%s' NOT FOUND!\n",what);
 			return false;				// Not found
+		}
 		v.assign(it->second);
 		return true;
 	};
@@ -89,7 +92,7 @@ sock_func(CoroutineBase *co) {
 			exit_coroutine();
 		}
 
-		content_length = hbuf.parse_headers(reqtype,path,httpvers,headers,4096);
+		content_length = hbuf.parse_headers(reqtype,path,httpvers,headers,max_hdrlen);
 
 		//////////////////////////////////////////////////////
 		// Check if we have Connection: Keep-Alive
@@ -125,6 +128,8 @@ sock_func(CoroutineBase *co) {
 					printf("*** TIMEOUT ON TIMER %d CHUNKED BODY ***\n",int(e.timerx));
 					exit_coroutine();
 				}
+				if ( hbuf.parse_xheaders(headers,max_hdrlen) )
+					rbody << "Extension headers were present." << html_endl;
 			}
 		}
 
