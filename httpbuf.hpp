@@ -13,7 +13,7 @@
 #include "iobuf.hpp"
 #include "utility.hpp"
 
-typedef std::unordered_multimap<std::string,std::string,std::hash<std::string>,s_casecmp> headermap_t;
+typedef std::unordered_multimap<std::string,std::string,s_casehash,s_casecmp> headermap_t;
 
 class HttpBuf : public IOBuf {
 	typedef int (*readcb_t)(int fd,void *buf,size_t bytes,void *arg);
@@ -24,8 +24,10 @@ class HttpBuf : public IOBuf {
 		S1LF2				// LF LF 
 	}	state = S0CR1;
 
-	size_t	hdr_epos = 0;
-	short	hdr_elen = 0;
+	size_t	hdr_epos = 0;			// End of headers
+	short	hdr_elen = 0;			// End length (2=CRLF, 1=LF)
+	size_t	hdr_chunked = 0;		// Start of chunked headers extension
+	short	hdr_chunklen = 0;		// Length of chunked headers extension
 
 public:	HttpBuf() {};
 	void reset() noexcept;
@@ -42,6 +44,7 @@ public:	HttpBuf() {};
 	  headermap_t& headers,			// Out: Parsed headers
 	  size_t maxhdr=2048			// In:  Max size of headers buffer for parsing
 	) noexcept;
+	bool parse_xheaders(headermap_t& headers,size_t maxhdr);
 };
 
 #endif // HTTPBUF_HPP

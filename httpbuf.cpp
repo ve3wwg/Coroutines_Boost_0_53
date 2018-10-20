@@ -258,6 +258,7 @@ HttpBuf::read_chunked(int fd,readcb_t readcb,void *arg,std::stringstream& unchun
 		// Skip over trailer-part
 		//////////////////////////////////////////////////////
 
+		hdr_chunked = tellg();			// Position of where extended headers go
 		for (;;) {
 			get_char(ch);		
 			if ( got_eol() )
@@ -269,6 +270,7 @@ HttpBuf::read_chunked(int fd,readcb_t readcb,void *arg,std::stringstream& unchun
 					break;
 			}
 		}
+		hdr_chunklen = size_t(tellg()) - hdr_chunked;	// Length of extended headers
 
 	} catch ( IO_Exception& e ) {
 		return e.rc;				// I/O error, or EOF
@@ -291,6 +293,11 @@ HttpBuf::reset() noexcept {
 
 //////////////////////////////////////////////////////////////////////
 // Parse received header data into header lines:
+//
+// RETURNS:
+//	0	No body (or is chunked). Indicates no Content-Length
+//		header was found.
+//	>0	Body length
 //////////////////////////////////////////////////////////////////////
 
 size_t
@@ -301,13 +308,13 @@ HttpBuf::parse_headers(
   headermap_t& headers, 		// Out: Parsed headers
   size_t maxhdr				// In:  Max size of headers buffer for parsing
 ) noexcept {
-	char *buf = new char[maxhdr];
+	char *buf = new char[maxhdr+1];
 
 	seekg(0);
 
 	auto read_line = [&]() -> bool {
-		getline(buf,maxhdr-1);
-		buf[maxhdr-1] = 0;
+		getline(buf,maxhdr);
+		buf[maxhdr] = 0;
 
 		size_t sz = strcspn(buf,"\r\n");
 		buf[sz] = 0;
@@ -332,10 +339,8 @@ HttpBuf::parse_headers(
 		while ( read_line() ) {
 			char *p = strchr(buf,':');
 			if ( p )
-				*p = 0;
-			ucase_buffer(buf);
+				*p++ = 0;
 			if ( p ) {
-				++p;
 				p += strspn(p," \t\b");
 				std::size_t sz = strcspn(p," \t\b");	// Check for trailing whitespace
 				std::string trimmed(p,sz);		// Trimmed value
@@ -356,6 +361,61 @@ HttpBuf::parse_headers(
 
 	const std::string& clen = it->second;
 	return strtoul(clen.c_str(),nullptr,10); // Body length
+}
+
+//////////////////////////////////////////////////////////////////////
+// Parse out extended headers, if any after chunked data
+//
+// RETURNS:
+//	false	No extension headers found
+//	true	Extension headers were returned
+//////////////////////////////////////////////////////////////////////
+
+bool
+HttpBuf::parse_xheaders(headermap_t& headers,size_t maxhdr) {
+	char *buf;
+	size_t svgpos, endpos;
+	bool xheadersf = false;
+
+	if ( hdr_chunked <= 0 )
+		return 0;		// No extended headers
+
+	auto read_line = [&]() -> bool {
+		if ( size_t(tellg()) >= endpos )
+			return false;
+		getline(buf,maxhdr);
+		buf[maxhdr] = 0;
+
+		size_t sz = strcspn(buf,"\r\n");
+		buf[sz] = 0;
+		if ( !*buf )
+			return false;
+		return !this->fail();
+	};
+
+	svgpos = tellg();
+	endpos = hdr_chunked + hdr_chunklen;
+	seekg(hdr_chunked);
+
+	buf = new char[maxhdr+1];
+	
+	while ( read_line() ) {
+		char *p = strchr(buf,':');
+		if ( p )
+			*p++ = 0;
+		if ( p ) {
+			p += strspn(p," \t\b");
+			std::size_t sz = strcspn(p," \t\b");	// Check for trailing whitespace
+			std::string trimmed(p,sz);		// Trimmed value
+
+			headers.insert(std::pair<std::string,std::string>(buf,trimmed));
+		} else	headers.insert(std::pair<std::string,std::string>(buf,""));
+		xheadersf = true;
+	}
+
+	delete[] buf;
+	seekg(svgpos);
+	return xheadersf;
 }
 
 //////////////////////////////////////////////////////////////////////
