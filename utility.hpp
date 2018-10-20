@@ -78,6 +78,23 @@ long millisecs(const timespec &tspec) {
 	return tspec.tv_sec * 1000L + tspec.tv_nsec / 1000000L;
 }
 
+struct s_casehash {
+	inline size_t operator()(const std::string& key) const noexcept {
+		unsigned sz = unsigned(key.size());
+		const char *keyp = key.c_str();
+		char ch;
+		size_t h = 0;
+
+		while ( sz-- > 0 ) {
+			ch = *keyp++;
+			if ( ch >= 'a' && ch <= 'z' )
+				ch ^= 0x20;
+			h += size_t(ch);
+		}
+		return h;
+	}
+};
+
 struct s_casecmp {
 	inline bool operator()(const std::string& left,const std::string& right) const noexcept {
 		return !strcasecmp(left.c_str(),right.c_str());
