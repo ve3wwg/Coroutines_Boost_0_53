@@ -33,6 +33,7 @@ sock_func(CoroutineBase *co) {
 	headermap_t headers;
 	std::size_t content_length = 0;
 	bool keep_alivef = false;				// True when we have Connection: Keep-Alive
+	bool chunkedf = false;					// True when body is chunked
 
 	//////////////////////////////////////////////////////////////
 	// Lookup a header, return std::string
@@ -100,12 +101,31 @@ sock_func(CoroutineBase *co) {
 				keep_alivef = !strcasecmp(keep_alive.c_str(),"Keep-Alive");
 		}
 
-		try	{
-			svc.read_body(sock,hbuf,content_length);
-			body.assign(hbuf.body());
-		} catch ( Service::Timeout& e ) {
-			printf("*** TIMEOUT ON TIMER %d BODY ***\n",int(e.timerx));
-			exit_coroutine();
+		{
+			std::string arg;
+
+			if ( get_header_str("TRANSFER-ENCODING",arg) )
+				chunkedf = !!strcasestr(arg.c_str(),"chunked");
+
+			if ( !chunkedf ) {
+				try	{
+					svc.read_body(sock,hbuf,content_length);
+					body.assign(hbuf.body());
+				} catch ( Service::Timeout& e ) {
+					printf("*** TIMEOUT ON TIMER %d BODY ***\n",int(e.timerx));
+					exit_coroutine();
+				}
+			} else	{
+				std::stringstream unchunked_buf;
+
+				try	{
+					svc.read_chunked(sock,hbuf,unchunked_buf);
+					body.assign(unchunked_buf.str());
+				} catch ( Service::Timeout& e ) {
+					printf("*** TIMEOUT ON TIMER %d CHUNKED BODY ***\n",int(e.timerx));
+					exit_coroutine();
+				}
+			}
 		}
 
 		//////////////////////////////////////////////////////
@@ -130,18 +150,19 @@ sock_func(CoroutineBase *co) {
 			rbody	<< "Hdr: " << hdr << ": " << val << html_endl;
 		}
 
-		rhdr	<< "Socket fd = " << sock << html_endl
-			<< "Content-Length: " << rbody.tellp() << html_endl
+		rbody 	<< "Socket fd = " << sock << html_endl
 			<< "Extracted body was " << body.size() << " bytes in length" << html_endl
-			<< "Body was:" << html_endl
+			<< "Body was {" << html_endl
 			<< body << html_endl
-			<< html_endl;
+			<< '}' << html_endl;
+
+		rhdr	<< "Content-Length: " << rbody.tellp() << html_endl << html_endl;
 
 		ev.disable_ev(EPOLLIN);
 		ev.enable_ev(EPOLLOUT);
 
 		try	{
-			scheduler.set_timer(0,svc,30);
+			scheduler.set_timer(0,svc,60);
 			svc.write(sock,rhdr);
 			svc.write(sock,rbody);
 		} catch ( Service::Timeout& e ) {
