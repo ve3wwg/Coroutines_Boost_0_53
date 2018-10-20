@@ -33,3 +33,8 @@ test:
 #	wget --save-headers --method=POST --body-data='Some body data..' -qO - 'http://127.0.0.1:2345/some/path?var=1&var=2' </dev/null 2>&1
 	wget --save-headers --post-data='Some body data..' -qO - 'http://127.0.0.1:2345/some/path?var=1&var=2' </dev/null 2>&1
 
+chunked:
+	wget --save-headers --post-data=$$'4\r\nWiki\r\n5\r\npedia\r\nE\r\n in\r\n\r\nchunks.\r\n0\r\n\r\n' -qO - \
+		--header='Transfer-Encoding: chunked' \
+		'http://127.0.0.1:2345/some/path?var=1&var=2' </dev/null 2>&1
+
