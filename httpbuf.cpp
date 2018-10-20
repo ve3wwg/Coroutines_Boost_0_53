@@ -12,9 +12,16 @@
 #include <assert.h>
 
 #include <memory>
+#include <unordered_set>
 
 #include "httpbuf.hpp"
 #include "utility.hpp"
+
+static std::unordered_set<std::string,s_casehash,s_casecmp> verboten_xheaders({
+	"Transfer-Encoding","Content-Length","Host",
+	"Cache-Control","Expect","Max-Forwards",
+	"Pragma","Range"
+});
 
 //////////////////////////////////////////////////////////////////////
 // Test if the std::stringstream has the http end header sequence
@@ -345,8 +352,10 @@ HttpBuf::parse_headers(
 				std::size_t sz = strcspn(p," \t\b");	// Check for trailing whitespace
 				std::string trimmed(p,sz);		// Trimmed value
 
-				headers.insert(std::pair<std::string,std::string>(buf,trimmed));
-			} else	headers.insert(std::pair<std::string,std::string>(buf,"")); 
+				headers.insert(std::pair<std::string,std::string>(buf,trimmed)); 
+			} else	{
+				headers.insert(std::pair<std::string,std::string>(buf,"")); 
+			}
 		}
 	}
 
@@ -403,14 +412,16 @@ HttpBuf::parse_xheaders(headermap_t& headers,size_t maxhdr) {
 		char *p = strchr(buf,':');
 		if ( p )
 			*p++ = 0;
-		if ( p ) {
-			p += strspn(p," \t\b");
-			std::size_t sz = strcspn(p," \t\b");	// Check for trailing whitespace
-			std::string trimmed(p,sz);		// Trimmed value
+		if ( verboten_xheaders.find(buf) == verboten_xheaders.end() ) {
+			if ( p ) {
+				p += strspn(p," \t\b");
+				std::size_t sz = strcspn(p," \t\b");	// Check for trailing whitespace
+				std::string trimmed(p,sz);		// Trimmed value
 
-			headers.insert(std::pair<std::string,std::string>(buf,trimmed));
-		} else	headers.insert(std::pair<std::string,std::string>(buf,""));
-		xheadersf = true;
+				headers.insert(std::pair<std::string,std::string>(buf,trimmed));
+			} else	headers.insert(std::pair<std::string,std::string>(buf,""));
+			xheadersf = true;
+		} // else header is forbidden
 	}
 
 	delete[] buf;
