@@ -222,6 +222,14 @@ Zlib::write_callback(void *arg) {
         }
 }
 
+//////////////////////////////////////////////////////////////////////
+// Compress to gzip compatible format:
+//
+// Notes:
+//	wbits must be >= 9 (default). The higher this value (15 max),
+//	the more CPU effort is required. See zlib deflateInit2().
+//////////////////////////////////////////////////////////////////////
+
 std::stringstream *
 Gzip::compress(std::stringstream& instr,int wbits) {
 	std::stringstream& otstr = *new std::stringstream;	// Output compressed stream
