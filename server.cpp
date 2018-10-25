@@ -13,6 +13,7 @@
 
 #include "scheduler.hpp"
 #include "httpbuf.hpp"
+#include "parse.hpp"
 
 static const char html_endl[] = "\r\n";
 
@@ -107,8 +108,12 @@ printf("Header '%s' NOT FOUND!\n",what);
 		{
 			std::string arg;
 
-			if ( get_header_str("TRANSFER-ENCODING",arg) )
-				chunkedf = !!strcasestr(arg.c_str(),"chunked");
+			if ( get_header_str("TRANSFER-ENCODING",arg) ) {
+				std::unordered_set<std::string,s_casehash,s_casecmp> fields;
+
+				parse_fields(arg.c_str(),0,fields);
+				chunkedf = fields.find("chunked") != fields.end();
+			}
 
 			if ( !chunkedf ) {
 				try	{
