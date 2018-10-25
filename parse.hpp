@@ -25,6 +25,12 @@ put(std::unordered_set<std::string>& container,const std::string& arg) {
 
 template<class C>
 void
+put(std::unordered_set<std::string,s_casehash,s_casecmp>& container,const std::string& arg) {
+	container.insert(arg);
+}
+
+template<class C>
+void
 put(std::vector<std::string>& container,const std::string& arg) {
 	container.push_back(arg);
 }
