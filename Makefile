@@ -43,3 +43,9 @@ xchunked:
 		--header='Transfer-Encoding: chunked' \
 		'http://127.0.0.1:2345/some/path?var=1&var=2' </dev/null 2>&1
 
+gzipped:
+	wget --save-headers --post-data=$$'Not chunked.\r\n' -qO - \
+		--header='Accept-Encoding: gzip; etc. ' \
+		'http://127.0.0.1:2345/some/path?var=1&var=2' </dev/null 2>&1
+
+
