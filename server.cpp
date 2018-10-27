@@ -35,7 +35,10 @@ sock_func(CoroutineBase *co) {
 	headermap_t headers;
 	std::size_t content_length = 0;
 	bool keep_alivef = false;				// True when we have Connection: Keep-Alive
+	std::unordered_set<std::string,s_casehash,s_casecmp> transfer_encoding;
+	std::vector<std::map<std::string,std::string,s_caseless>> accept_encoding;
 	bool chunkedf = false;					// True when body is chunked
+	bool gzippedf = false;					// True when body is gzipped
 
 	//////////////////////////////////////////////////////////////
 	// Lookup a header, return std::string
@@ -108,11 +111,24 @@ printf("Header '%s' NOT FOUND!\n",what);
 		{
 			std::string arg;
 
-			if ( get_header_str("TRANSFER-ENCODING",arg) ) {
-				std::unordered_set<std::string,s_casehash,s_casecmp> fields;
+			if ( get_header_str("ACCEPT-ENCODING",arg) ) {
+				parse_fields(accept_encoding,arg.c_str());
+				for ( const auto& map : accept_encoding ) {
+					if ( map.find("gzip") != map.end() ) {
+						gzippedf = true;
+						break;
+					}
+					
+				}
+			}
+		}
 
-				parse_fields(arg.c_str(),0,fields);
-				chunkedf = fields.find("chunked") != fields.end();
+		{
+			std::string arg;
+
+			if ( get_header_str("TRANSFER-ENCODING",arg) ) {
+				parse_fields(transfer_encoding,arg.c_str());
+				chunkedf = transfer_encoding.find("chunked") != transfer_encoding.end();
 			}
 
 			if ( !chunkedf ) {
@@ -151,7 +167,8 @@ printf("Header '%s' NOT FOUND!\n",what);
 		rbody	<< "Request type: " << reqtype << html_endl
 			<< "Request path: " << path << html_endl
 			<< "Http Version: " << httpvers << html_endl
-			<< "Request Headers were:" << html_endl;
+			<< "Request Headers were:" << html_endl
+			<< "Gzipped: " << gzippedf << html_endl;
 
 		for ( auto& pair : headers ) {
 			const std::string& hdr = pair.first;
