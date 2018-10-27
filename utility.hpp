@@ -101,6 +101,12 @@ struct s_casecmp {
 	}
 };
 
+struct s_caseless {
+	inline bool operator()(const std::string& left,const std::string& right) const noexcept {
+		return strcasecmp(left.c_str(),right.c_str()) < 0;
+	}
+};
+
 #endif // UTILITY_HPP
 
 // End utility.hpp
